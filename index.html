@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager - Sistema de Gestión de Tareas</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+    <!-- Panel Principal -->
+    <div id="mainPanel">
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-dark dark-navbar shadow-sm">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">
+                    <i class="bi bi-clipboard-check-fill"></i> Task Manager
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <span class="navbar-text me-3">
+                                <i class="bi bi-person-circle"></i> <strong id="currentUser"></strong>
+                            </span>
+                        </li>
+                        <li class="nav-item">
+                            <button class="btn btn-outline-light btn-sm" id="logoutBtn">
+                                <i class="bi bi-box-arrow-right"></i> Salir
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container-fluid mt-4">
+            <!-- Pestañas -->
+            <ul class="nav nav-tabs mb-4" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" data-tab="tasks" type="button">
+                        <i class="bi bi-list-check"></i> Tareas
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-tab="projects" type="button">
+                        <i class="bi bi-folder"></i> Proyectos
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-tab="comments" type="button">
+                        <i class="bi bi-chat-left-text"></i> Comentarios
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-tab="history" type="button">
+                        <i class="bi bi-clock-history"></i> Historial
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-tab="notifications" type="button">
+                        <i class="bi bi-bell"></i> Notificaciones
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-tab="search" type="button">
+                        <i class="bi bi-search"></i> Búsqueda
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-tab="reports" type="button">
+                        <i class="bi bi-file-earmark-text"></i> Reportes
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab: Tareas -->
+            <div id="tasksTab" class="tab-content active">
+                <div class="row">
+                    <!-- Formulario de Tareas -->
+                    <div class="col-lg-4 mb-4">
+                        <div class="card shadow-sm h-100">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0"><i class="bi bi-pencil-square"></i> Nueva/Editar Tarea</h5>
+                            </div>
+                            <div class="card-body">
+                                <form id="taskForm">
+                                    <div class="mb-3">
+                                        <label for="taskTitle" class="form-label">Título <span class="text-danger">*</span></label>
+                                        <input type="text" class="form-control" id="taskTitle" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="taskDescription" class="form-label">Descripción</label>
+                                        <textarea class="form-control" id="taskDescription" rows="3"></textarea>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="taskStatus" class="form-label">Estado</label>
+                                            <select class="form-select" id="taskStatus">
+                                                <option>Pendiente</option>
+                                                <option>En Progreso</option>
+                                                <option>Completada</option>
+                                                <option>Bloqueada</option>
+                                                <option>Cancelada</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="taskPriority" class="form-label">Prioridad</label>
+                                            <select class="form-select" id="taskPriority">
+                                                <option>Baja</option>
+                                                <option>Media</option>
+                                                <option>Alta</option>
+                                                <option>Crítica</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="taskProject" class="form-label">Proyecto</label>
+                                        <select class="form-select" id="taskProject"></select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="taskAssigned" class="form-label">Asignado a</label>
+                                        <select class="form-select" id="taskAssigned"></select>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label for="taskDueDate" class="form-label">Fecha Vencimiento</label>
+                                            <input type="date" class="form-control" id="taskDueDate" min="1890-01-01" max="2100-12-31">
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label for="taskHours" class="form-label">Horas Estimadas</label>
+                                            <input type="number" class="form-control" id="taskHours" step="0.5" min="0">
+                                        </div>
+                                    </div>
+                                    <div class="d-grid gap-2">
+                                        <button type="button" class="btn btn-success" id="addTaskBtn">
+                                            <i class="bi bi-plus-circle"></i> Agregar
+                                        </button>
+                                        <button type="button" class="btn btn-primary" id="updateTaskBtn">
+                                            <i class="bi bi-pencil"></i> Actualizar
+                                        </button>
+                                        <button type="button" class="btn btn-danger" id="deleteTaskBtn">
+                                            <i class="bi bi-trash"></i> Eliminar
+                                        </button>
+                                        <button type="button" class="btn btn-secondary" id="clearTaskBtn">
+                                            <i class="bi bi-x-circle"></i> Limpiar
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de Tareas -->
+                    <div class="col-lg-8 mb-4">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="bi bi-list-ul"></i> Lista de Tareas</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-striped mb-0" id="tasksTable">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th class="sortable" data-column="id">ID <i class="bi bi-arrow-down-up"></i></th>
+                                                <th class="sortable" data-column="title">Título <i class="bi bi-arrow-down-up"></i></th>
+                                                <th class="sortable" data-column="status">Estado <i class="bi bi-arrow-down-up"></i></th>
+                                                <th class="sortable" data-column="priority">Prioridad <i class="bi bi-arrow-down-up"></i></th>
+                                                <th>Proyecto</th>
+                                                <th>Asignado</th>
+                                                <th class="sortable" data-column="dueDate">Vencimiento <i class="bi bi-arrow-down-up"></i></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tasksTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Estadísticas -->
+                        <div class="card shadow-sm mt-3">
+                            <div class="card-body">
+                                <h6 class="card-title"><i class="bi bi-bar-chart"></i> Estadísticas</h6>
+                                <p class="mb-0" id="statsText"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Proyectos -->
+            <div id="projectsTab" class="tab-content">
+                <div class="row">
+                    <div class="col-lg-4 mb-4">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0"><i class="bi bi-folder-plus"></i> Gestión de Proyectos</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label for="projectName" class="form-label">Nombre <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="projectName" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="projectDescription" class="form-label">Descripción</label>
+                                    <textarea class="form-control" id="projectDescription" rows="3"></textarea>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-success" id="addProjectBtn">
+                                        <i class="bi bi-plus-circle"></i> Agregar
+                                    </button>
+                                    <button type="button" class="btn btn-primary" id="updateProjectBtn">
+                                        <i class="bi bi-pencil"></i> Actualizar
+                                    </button>
+                                    <button type="button" class="btn btn-danger" id="deleteProjectBtn">
+                                        <i class="bi bi-trash"></i> Eliminar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-8 mb-4">
+                        <div class="card shadow-sm">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="bi bi-folder"></i> Proyectos</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover table-striped mb-0">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>ID</th>
+                                                <th>Nombre</th>
+                                                <th>Descripción</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="projectsTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Comentarios -->
+            <div id="commentsTab" class="tab-content">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-chat-left-text"></i> Comentarios de Tareas</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="commentTaskId" class="form-label">ID Tarea</label>
+                                <input type="number" class="form-control" id="commentTaskId">
+                            </div>
+                            <div class="col-md-8 d-flex align-items-end gap-2">
+                                <button type="button" class="btn btn-primary" id="loadCommentsBtn">
+                                    <i class="bi bi-arrow-clockwise"></i> Cargar Comentarios
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="commentText" class="form-label">Comentario</label>
+                            <textarea class="form-control" id="commentText" rows="3"></textarea>
+                        </div>
+                        <button type="button" class="btn btn-success" id="addCommentBtn">
+                            <i class="bi bi-plus-circle"></i> Agregar Comentario
+                        </button>
+                        <hr>
+                        <div class="mt-3">
+                            <label class="form-label">Comentarios</label>
+                            <textarea class="form-control font-monospace" id="commentsArea" rows="15" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Historial -->
+            <div id="historyTab" class="tab-content">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Historial de Cambios</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="historyTaskId" class="form-label">ID Tarea</label>
+                                <input type="number" class="form-control" id="historyTaskId">
+                            </div>
+                            <div class="col-md-8 d-flex align-items-end gap-2">
+                                <button type="button" class="btn btn-primary" id="loadHistoryBtn">
+                                    <i class="bi bi-arrow-clockwise"></i> Cargar Historial
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="loadAllHistoryBtn">
+                                    <i class="bi bi-list-ul"></i> Cargar Todo el Historial
+                                </button>
+                            </div>
+                        </div>
+                        <textarea class="form-control font-monospace" id="historyArea" rows="20" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Notificaciones -->
+            <div id="notificationsTab" class="tab-content">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-bell"></i> Notificaciones</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-primary me-2" id="loadNotificationsBtn">
+                                <i class="bi bi-arrow-clockwise"></i> Cargar Notificaciones
+                            </button>
+                            <button type="button" class="btn btn-success" id="markNotificationsReadBtn">
+                                <i class="bi bi-check-circle"></i> Marcar como Leídas
+                            </button>
+                        </div>
+                        <textarea class="form-control font-monospace" id="notificationsArea" rows="20" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Búsqueda -->
+            <div id="searchTab" class="tab-content">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-search"></i> Búsqueda Avanzada</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6 mb-3">
+                                <label for="searchText" class="form-label">Texto</label>
+                                <input type="text" class="form-control" id="searchText" placeholder="Buscar en título o descripción...">
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="searchStatus" class="form-label">Estado</label>
+                                <select class="form-select" id="searchStatus">
+                                    <option value="">Todos</option>
+                                    <option>Pendiente</option>
+                                    <option>En Progreso</option>
+                                    <option>Completada</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <label for="searchPriority" class="form-label">Prioridad</label>
+                                <select class="form-select" id="searchPriority">
+                                    <option value="">Todas</option>
+                                    <option>Baja</option>
+                                    <option>Media</option>
+                                    <option>Alta</option>
+                                    <option>Crítica</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="searchProject" class="form-label">Proyecto</label>
+                                <select class="form-select" id="searchProject">
+                                    <option value="0">Todos</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <button type="button" class="btn btn-primary w-100" id="searchBtn">
+                                    <i class="bi bi-search"></i> Buscar
+                                </button>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Título</th>
+                                        <th>Estado</th>
+                                        <th>Prioridad</th>
+                                        <th>Proyecto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="searchTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Reportes -->
+            <div id="reportsTab" class="tab-content">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0"><i class="bi bi-file-earmark-text"></i> Generación de Reportes</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6 mb-2">
+                                <button type="button" class="btn btn-primary w-100" id="reportTasksBtn">
+                                    <i class="bi bi-list-check"></i> Reporte de Tareas
+                                </button>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <button type="button" class="btn btn-primary w-100" id="reportProjectsBtn">
+                                    <i class="bi bi-folder"></i> Reporte de Proyectos
+                                </button>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <button type="button" class="btn btn-primary w-100" id="reportUsersBtn">
+                                    <i class="bi bi-people"></i> Reporte de Usuarios
+                                </button>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <button type="button" class="btn btn-success w-100" id="exportCSVBtn">
+                                    <i class="bi bi-filetype-csv"></i> Exportar a CSV
+                                </button>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <button type="button" class="btn btn-info w-100" id="backupBtn">
+                                    <i class="bi bi-download"></i> Backup de Datos
+                                </button>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <button type="button" class="btn btn-warning w-100" id="restoreBtn">
+                                    <i class="bi bi-upload"></i> Restaurar Datos
+                                </button>
+                            </div>
+                        </div>
+                        <input type="file" id="restoreFile" accept=".json" class="d-none">
+                        <hr>
+                        <label class="form-label">Resultado del Reporte</label>
+                        <textarea class="form-control font-monospace" id="reportsArea" rows="20" readonly></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sistema de Notificaciones -->
+    <div id="notificationContainer" class="notification-container"></div>
+
+    <!-- Modal de Confirmación -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmTitle">Confirmar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmMessage"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="confirmNo" data-bs-dismiss="modal">No</button>
+                    <button type="button" class="btn btn-primary" id="confirmYes">Sí</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

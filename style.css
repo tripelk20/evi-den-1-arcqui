@@ -1,0 +1,577 @@
+/* Estilos personalizados - Blanco, Guinda y Dorado (equilibrio) */
+
+:root {
+    --white-bg: #fafafa;
+    --white-pure: #ffffff;
+    --cream: #fdfbf7;
+    --guinda: #722f37;
+    --guinda-light: #8b3a44;
+    --guinda-dark: #5a252c;
+    --gold-primary: #c9a227;
+    --gold-bright: #d4af37;
+    --gold-dark: #a68b1e;
+    --gold-soft: #e8d5a3;
+    --border-guinda: rgba(114, 47, 55, 0.35);
+    --border-gold: rgba(201, 162, 39, 0.4);
+    --text-dark: #2d2d2d;
+    --text-muted: #5a5a5a;
+}
+
+body.dark-theme {
+    background: linear-gradient(180deg, var(--white-bg) 0%, var(--cream) 50%, var(--white-bg) 100%);
+    color: var(--text-dark);
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* Navbar - Guinda con dorado */
+.dark-navbar {
+    background: linear-gradient(135deg, var(--guinda-dark) 0%, var(--guinda) 50%, var(--guinda-light) 100%) !important;
+    border-bottom: 3px solid var(--gold-primary);
+    box-shadow: 0 2px 12px rgba(114, 47, 55, 0.25);
+}
+
+.dark-navbar .navbar-brand {
+    color: var(--gold-bright) !important;
+    font-weight: 700;
+}
+
+.dark-navbar .navbar-text {
+    color: var(--white-pure) !important;
+}
+
+.dark-navbar .btn-outline-light {
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+}
+
+.dark-navbar .btn-outline-light:hover {
+    background-color: var(--gold-primary);
+    color: var(--guinda-dark);
+    border-color: var(--gold-primary);
+}
+
+/* Cards - Blanco con bordes guinda/dorado */
+.card {
+    background: var(--white-pure);
+    border: 1px solid var(--border-guinda);
+    border-radius: 12px;
+    color: var(--text-dark);
+    box-shadow: 0 2px 12px rgba(114, 47, 55, 0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(114, 47, 55, 0.12);
+    border-color: var(--gold-primary);
+}
+
+/* Headers de formularios: guinda */
+.card-header.bg-primary {
+    background: linear-gradient(135deg, var(--guinda) 0%, var(--guinda-light) 100%) !important;
+    border-bottom: 2px solid var(--gold-primary);
+    color: var(--white-pure) !important;
+    font-weight: 600;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+/* Headers de listas: blanco con borde dorado */
+.card-header.bg-light {
+    background: var(--white-pure) !important;
+    border-bottom: 2px solid var(--gold-primary);
+    color: var(--guinda) !important;
+    font-weight: 600;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+/* Formularios - Fondos blancos */
+.form-control,
+.form-select {
+    background-color: var(--white-pure) !important;
+    border: 1px solid var(--border-guinda) !important;
+    color: var(--text-dark) !important;
+    border-radius: 8px;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--white-pure) !important;
+    border-color: var(--gold-primary) !important;
+    color: var(--text-dark) !important;
+    box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.2) !important;
+}
+
+.form-control::placeholder {
+    color: var(--text-muted);
+    opacity: 0.8;
+}
+
+.form-label {
+    color: var(--guinda) !important;
+    font-weight: 500;
+}
+
+/* Botones - Equilibrio guinda/dorado */
+.btn-primary {
+    background: linear-gradient(135deg, var(--guinda) 0%, var(--guinda-light) 100%);
+    border: 1px solid var(--gold-primary);
+    color: var(--white-pure);
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--guinda-dark) 0%, var(--guinda) 100%);
+    border-color: var(--gold-bright);
+    color: var(--gold-bright);
+    box-shadow: 0 4px 12px rgba(114, 47, 55, 0.3);
+    transform: translateY(-1px);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #2d6a3e 0%, #3d8b52 100%);
+    border: 1px solid var(--gold-primary);
+    color: var(--white-pure);
+}
+
+.btn-success:hover {
+    border-color: var(--gold-bright);
+    color: var(--gold-soft);
+    box-shadow: 0 4px 12px rgba(45, 106, 62, 0.3);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--guinda-dark) 0%, #8b3a44 100%);
+    border: 1px solid var(--gold-primary);
+    color: var(--white-pure);
+}
+
+.btn-danger:hover {
+    border-color: var(--gold-bright);
+    color: var(--gold-soft);
+    box-shadow: 0 4px 12px rgba(114, 47, 55, 0.35);
+}
+
+.btn-secondary {
+    background: var(--white-pure);
+    border: 1px solid var(--border-guinda);
+    color: var(--guinda);
+}
+
+.btn-secondary:hover {
+    background: var(--cream);
+    border-color: var(--gold-primary);
+    color: var(--guinda-dark);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #2d5a6a 0%, #3d7a8b 100%);
+    border: 1px solid var(--gold-primary);
+    color: var(--white-pure);
+}
+
+.btn-info:hover {
+    border-color: var(--gold-bright);
+    color: var(--gold-soft);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold-primary) 100%);
+    border: 1px solid var(--guinda);
+    color: var(--white-pure);
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-bright) 100%);
+    border-color: var(--guinda);
+    color: var(--guinda-dark);
+}
+
+/* Nav Tabs - Blanco con acentos */
+.nav-tabs {
+    border-bottom: 2px solid var(--border-gold);
+    background: transparent;
+}
+
+.nav-tabs .nav-link {
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--text-muted);
+    font-weight: 500;
+    transition: all 0.2s;
+    background: transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    border-bottom-color: var(--gold-primary);
+    color: var(--guinda);
+    background-color: rgba(201, 162, 39, 0.08);
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--guinda) !important;
+    border-bottom-color: var(--guinda) !important;
+    background-color: rgba(114, 47, 55, 0.06);
+    font-weight: 600;
+}
+
+/* Tablas - Blanco y guinda/dorado */
+.table {
+    color: var(--text-dark);
+}
+
+.table-dark {
+    background: linear-gradient(135deg, var(--guinda) 0%, var(--guinda-light) 100%) !important;
+    color: var(--white-pure) !important;
+}
+
+.table-dark th {
+    border-color: var(--gold-primary) !important;
+    color: var(--gold-bright) !important;
+}
+
+.table-hover tbody tr {
+    background-color: var(--white-pure);
+    transition: background-color 0.2s;
+}
+
+.table-hover tbody tr:hover {
+    background-color: var(--gold-soft) !important;
+    cursor: pointer;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > td {
+    background-color: var(--cream);
+}
+
+.table td, .table th {
+    border-color: var(--border-guinda);
+}
+
+/* Sistema de Notificaciones */
+.notification-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    max-width: 400px;
+    width: 100%;
+}
+
+.notification {
+    padding: 15px 20px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(114, 47, 55, 0.15);
+    font-size: 14px;
+    animation: slideIn 0.3s ease-out;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: transform 0.2s;
+    border-left: 4px solid;
+}
+
+.notification:hover {
+    transform: translateX(-5px);
+}
+
+.notification.success {
+    background: var(--white-pure);
+    border-left-color: #2d6a3e;
+    color: var(--text-dark);
+    border: 1px solid rgba(45, 106, 62, 0.3);
+}
+
+.notification.error {
+    background: var(--white-pure);
+    border-left-color: var(--guinda);
+    color: var(--text-dark);
+    border: 1px solid var(--border-guinda);
+}
+
+.notification.warning {
+    background: var(--white-pure);
+    border-left-color: var(--gold-primary);
+    color: var(--text-dark);
+    border: 1px solid var(--border-gold);
+}
+
+.notification.info {
+    background: var(--white-pure);
+    border-left-color: var(--guinda);
+    color: var(--text-dark);
+    border: 1px solid var(--border-guinda);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Tab Content */
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Tablas con ordenamiento */
+.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    transition: background-color 0.2s;
+}
+
+.sortable:hover {
+    background-color: rgba(201, 162, 39, 0.2) !important;
+}
+
+.sortable.asc::after {
+    content: ' ↑';
+    opacity: 1;
+    font-weight: bold;
+    color: var(--gold-primary);
+}
+
+.sortable.desc::after {
+    content: ' ↓';
+    opacity: 1;
+    font-weight: bold;
+    color: var(--gold-primary);
+}
+
+.sortable::after {
+    content: ' ↕';
+    position: absolute;
+    right: 10px;
+    opacity: 0.5;
+    font-size: 0.8em;
+    color: var(--guinda);
+}
+
+/* Textarea readonly */
+textarea[readonly] {
+    background-color: var(--cream) !important;
+    border: 1px solid var(--border-guinda) !important;
+    color: var(--text-dark) !important;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+}
+
+/* Estados de prioridad visuales */
+.priority-badge {
+    padding: 0.25em 0.5em;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.priority-baja {
+    background-color: var(--cream);
+    color: #2d6a3e;
+    border: 1px solid var(--gold-primary);
+}
+
+.priority-media {
+    background-color: var(--gold-soft);
+    color: var(--guinda-dark);
+    border: 1px solid var(--gold-primary);
+}
+
+.priority-alta {
+    background-color: rgba(114, 47, 55, 0.15);
+    color: var(--guinda);
+    border: 1px solid var(--guinda);
+}
+
+.priority-crítica {
+    background-color: var(--guinda);
+    color: var(--gold-bright);
+    border: 1px solid var(--gold-primary);
+    font-weight: 700;
+}
+
+/* Estados de tareas visuales */
+.status-badge {
+    padding: 0.25em 0.5em;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.status-pendiente {
+    background-color: var(--gold-soft);
+    color: var(--guinda-dark);
+    border: 1px solid var(--gold-primary);
+}
+
+.status-en-progreso {
+    background-color: rgba(45, 90, 106, 0.15);
+    color: #2d5a6a;
+    border: 1px solid var(--gold-primary);
+}
+
+.status-completada {
+    background-color: var(--cream);
+    color: #2d6a3e;
+    border: 1px solid var(--gold-primary);
+}
+
+.status-bloqueada {
+    background-color: rgba(114, 47, 55, 0.15);
+    color: var(--guinda);
+    border: 1px solid var(--guinda);
+}
+
+.status-cancelada {
+    background-color: var(--cream);
+    color: var(--text-muted);
+    border: 1px solid var(--border-guinda);
+}
+
+/* Modal - Blanco, guinda y dorado */
+.modal-content {
+    background: var(--white-pure);
+    border: 2px solid var(--gold-primary);
+    color: var(--text-dark);
+    box-shadow: 0 8px 32px rgba(114, 47, 55, 0.15);
+}
+
+.modal-header {
+    border-bottom: 2px solid var(--gold-primary);
+    background: linear-gradient(135deg, var(--guinda) 0%, var(--guinda-light) 100%);
+}
+
+.modal-title {
+    color: var(--gold-bright) !important;
+}
+
+.modal-body {
+    background: var(--white-pure);
+    color: var(--text-dark);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-gold);
+    background: var(--cream);
+}
+
+.btn-close {
+    filter: brightness(0) invert(1);
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--cream);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--guinda) 0%, var(--guinda-light) 100%);
+    border-radius: 10px;
+    border: 2px solid var(--cream);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-bright) 100%);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .notification-container {
+        left: 10px;
+        right: 10px;
+        max-width: none;
+    }
+
+    .notification {
+        padding: 12px 15px;
+        font-size: 13px;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .table {
+        font-size: 0.875rem;
+    }
+
+    .btn {
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+    }
+
+    .nav-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+
+    .nav-tabs .nav-link {
+        white-space: nowrap;
+        font-size: 0.875rem;
+        padding: 0.5rem 0.75rem;
+    }
+}
+
+/* Mejoras de accesibilidad */
+.btn:focus,
+.form-control:focus,
+.form-select:focus {
+    outline: 2px solid var(--gold-primary);
+    outline-offset: 2px;
+}
+
+/* Textos */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--guinda);
+}
+
+.text-muted {
+    color: var(--text-muted) !important;
+}
+
+/* Container */
+.container-fluid {
+    background: transparent;
+}
+
+/* Estadísticas y card-body secundarios */
+.card-body {
+    background: var(--white-pure);
+    color: var(--text-dark);
+}
+
+.card .card-body h6.card-title {
+    color: var(--guinda);
+}
