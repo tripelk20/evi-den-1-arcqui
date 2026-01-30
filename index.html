@@ -25,7 +25,7 @@
                 <div class="collapse navbar-collapse" id="navbarNav">
                     <ul class="navbar-nav ms-auto">
                       <li class="nav-item dropdown d-flex align-items-center is-hidden" id="profileDropdown">
-                    <i class="bi bi-person-circle fs-4 me-2 text-white"></i>
+                    <img id="profilePhotoNav" class="profile-photo-nav is-hidden" alt="Foto de perfil">
                     <button type="button" class="btn btn-link nav-link dropdown-toggle text-white p-0 border-0 text-decoration-none shadow-none" id="profileMenu" data-bs-toggle="dropdown" aria-expanded="false">
                         <strong id="currentUser"></strong>
                     </button>
@@ -101,7 +101,7 @@
 
             <!-- Tab: Tareas -->
             <div id="tasksTab" class="tab-content active">
-                <div class="row">
+ñ                <div class="row">
                     <!-- Formulario de Tareas -->
                     <div class="col-lg-4 mb-4">
                         <div class="card shadow-sm h-100">
@@ -536,16 +536,16 @@
                         <input type="text" class="form-control" id="profileName" placeholder="Tu nombre visible">
                     </div>
                     <div class="mb-3">
-                        <label for="profilePhotoUrl" class="form-label">URL de foto</label>
-                        <input type="text" class="form-control" id="profilePhotoUrl" placeholder="https://...">
+                        <label for="profilePhotoFile" class="form-label">Foto de perfil</label>
+                        <input type="file" class="form-control" id="profilePhotoFile" accept="image/*">
                     </div>
                     <div class="mb-3">
                         <img id="profilePhotoPreview" class="profile-photo-preview is-hidden" alt="Vista previa de foto">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-success" id="saveProfileBtn">Guardar</button>
+                    <button type="button" class="btn btn-secondary" id="cancelProfileBtn" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="acceptProfileBtn">Aceptar</button>
                 </div>
             </div>
         </div>

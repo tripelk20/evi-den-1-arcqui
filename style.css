@@ -76,6 +76,16 @@ body.login-page .text-primary {
     border: 1px solid var(--border-teal);
 }
 
+.profile-photo-nav {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--teal-bright);
+    margin-right: 8px;
+    background: var(--cream);
+}
+
 /* Navbar - Guinda con dorado */
 .dark-navbar {
     background: linear-gradient(135deg, #2d5a6a, #3d7a8b, #2d7a6b) !important;

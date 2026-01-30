@@ -4,6 +4,9 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -13,6 +16,29 @@ const PORT = process.env.PORT || 3000;
 // ────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
+
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadDir));
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const safeExt = ext && ext.length <= 5 ? ext : '';
+    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${safeExt}`);
+  }
+});
+
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype && file.mimetype.startsWith('image/')) return cb(null, true);
+    cb(new Error('Solo se permiten imágenes'));
+  }
+});
 
 // ────────────────────────────────────────────────
 // Conexión a MongoDB Atlas
@@ -124,6 +150,10 @@ async function backfillNumeroForProjects() {
 
 mongoose.connection.once('open', async () => {
   try {
+    await User.updateMany(
+      { $or: [{ username: 'admin' }, { role: 'admin' }], permisos: { $ne: true } },
+      { $set: { permisos: true } }
+    );
     await backfillNumeroForProjects();
   } catch (err) {
     console.error('Error al asignar numeros a proyectos:', err.message);
@@ -195,15 +225,16 @@ app.get('/api/profile', auth, async (req, res) => {
   });
 });
 
-app.put('/api/profile', auth, async (req, res) => {
+app.put('/api/profile', auth, upload.single('photo'), async (req, res) => {
   try {
-    const { displayName, photoUrl } = req.body || {};
+    const { displayName } = req.body || {};
+    const photoUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
     const user = await User.findOneAndUpdate(
       { username: req.user.username },
       {
         $set: {
           displayName: (displayName || '').trim(),
-          photoUrl: (photoUrl || '').trim()
+          ...(photoUrl ? { photoUrl } : {})
         }
       },
       { new: true }

@@ -271,6 +271,26 @@ const Api = {
     },
 
     async updateProfile(payload) {
+        if (payload instanceof FormData) {
+            const headers = {};
+            if (this.token) {
+                headers.Authorization = `Bearer ${this.token}`;
+            }
+            const res = await fetch(CONFIG.API_BASE_URL + '/profile', {
+                method: 'PUT',
+                headers,
+                body: payload
+            });
+            const text = await res.text();
+            const data = text ? (() => { try { return JSON.parse(text); } catch (e) { return null; } })() : null;
+            if (!res.ok) {
+                const err = new Error(data && data.error ? data.error : 'Error en la petición');
+                err.status = res.status;
+                err.data = data;
+                throw err;
+            }
+            return data;
+        }
         return await this.request('PUT', '/profile', payload);
     },
 
@@ -590,18 +610,39 @@ async function loadProjects() {
     }
 }
 
+let lastProfileSnapshot = null;
+
+function resolvePhotoUrl(url) {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    const base = CONFIG.API_BASE_URL.replace(/\/api\/?$/, '');
+    return base + url;
+}
+
 async function loadProfile() {
     try {
         const profile = await Api.getProfile();
         const nameInput = document.getElementById('profileName');
-        const photoInput = document.getElementById('profilePhotoUrl');
+        const photoInput = document.getElementById('profilePhotoFile');
         const photoPreview = document.getElementById('profilePhotoPreview');
+        const photoNav = document.getElementById('profilePhotoNav');
+
+        lastProfileSnapshot = {
+            displayName: profile.displayName || '',
+            photoUrl: profile.photoUrl || ''
+        };
 
         if (nameInput) nameInput.value = profile.displayName || '';
-        if (photoInput) photoInput.value = profile.photoUrl || '';
+        if (photoInput) photoInput.value = '';
         if (photoPreview) {
-            photoPreview.src = profile.photoUrl || '';
-            photoPreview.classList.toggle('is-hidden', !profile.photoUrl);
+            const resolved = resolvePhotoUrl(profile.photoUrl || '');
+            photoPreview.src = resolved;
+            photoPreview.classList.toggle('is-hidden', !resolved);
+        }
+        if (photoNav) {
+            const resolved = resolvePhotoUrl(profile.photoUrl || '');
+            photoNav.src = resolved;
+            photoNav.classList.toggle('is-hidden', !resolved);
         }
 
         updateUIAfterLogin(
@@ -617,16 +658,28 @@ async function loadProfile() {
 
 async function saveProfile() {
     const nameInput = document.getElementById('profileName');
-    const photoInput = document.getElementById('profilePhotoUrl');
+    const photoInput = document.getElementById('profilePhotoFile');
     const displayName = nameInput ? nameInput.value.trim() : '';
-    const photoUrl = photoInput ? photoInput.value.trim() : '';
+    const photoFile = photoInput && photoInput.files ? photoInput.files[0] : null;
 
     try {
-        const updated = await Api.updateProfile({ displayName, photoUrl });
+        const formData = new FormData();
+        formData.append('displayName', displayName);
+        if (photoFile) {
+            formData.append('photo', photoFile);
+        }
+        const updated = await Api.updateProfile(formData);
         const photoPreview = document.getElementById('profilePhotoPreview');
+        const photoNav = document.getElementById('profilePhotoNav');
         if (photoPreview) {
-            photoPreview.src = updated.photoUrl || '';
-            photoPreview.classList.toggle('is-hidden', !updated.photoUrl);
+            const resolved = resolvePhotoUrl(updated.photoUrl || '');
+            photoPreview.src = resolved;
+            photoPreview.classList.toggle('is-hidden', !resolved);
+        }
+        if (photoNav) {
+            const resolved = resolvePhotoUrl(updated.photoUrl || '');
+            photoNav.src = resolved;
+            photoNav.classList.toggle('is-hidden', !resolved);
         }
         updateUIAfterLogin(
             updated.username,
@@ -635,9 +688,37 @@ async function saveProfile() {
             updated.permisos === true
         );
         NotificationSystem.success('Perfil actualizado');
+
+        const modalEl = document.getElementById('profileModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.hide();
+        }
     } catch (err) {
         console.error(err);
         NotificationSystem.error(err.data && err.data.error ? err.data.error : 'Error al guardar perfil');
+    }
+}
+
+function cancelProfileChanges() {
+    const nameInput = document.getElementById('profileName');
+    const photoInput = document.getElementById('profilePhotoFile');
+    const photoPreview = document.getElementById('profilePhotoPreview');
+    const photoNav = document.getElementById('profilePhotoNav');
+
+    if (!lastProfileSnapshot) return;
+
+    if (nameInput) nameInput.value = lastProfileSnapshot.displayName || '';
+    if (photoInput) photoInput.value = '';
+
+    const resolved = resolvePhotoUrl(lastProfileSnapshot.photoUrl || '');
+    if (photoPreview) {
+        photoPreview.src = resolved;
+        photoPreview.classList.toggle('is-hidden', !resolved);
+    }
+    if (photoNav) {
+        photoNav.src = resolved;
+        photoNav.classList.toggle('is-hidden', !resolved);
     }
 }
 
@@ -1612,7 +1693,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const exportCSVBtn = document.getElementById('exportCSVBtn');
     const backupBtn = document.getElementById('backupBtn');
     const restoreBtn = document.getElementById('restoreBtn');
-    const saveProfileBtn = document.getElementById('saveProfileBtn');
+    const acceptProfileBtn = document.getElementById('acceptProfileBtn');
+    const cancelProfileBtn = document.getElementById('cancelProfileBtn');
+    const profilePhotoFile = document.getElementById('profilePhotoFile');
 
     if (reportTasksBtn) reportTasksBtn.addEventListener('click', () => generateReport('tasks'));
     if (reportProjectsBtn) reportProjectsBtn.addEventListener('click', () => generateReport('projects'));
@@ -1620,7 +1703,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (exportCSVBtn) exportCSVBtn.addEventListener('click', exportCSV);
     if (backupBtn) backupBtn.addEventListener('click', backupData);
     if (restoreBtn) restoreBtn.addEventListener('click', restoreData);
-    if (saveProfileBtn) saveProfileBtn.addEventListener('click', saveProfile);
+    if (acceptProfileBtn) acceptProfileBtn.addEventListener('click', saveProfile);
+    if (cancelProfileBtn) cancelProfileBtn.addEventListener('click', cancelProfileChanges);
+    if (profilePhotoFile) {
+        profilePhotoFile.addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            const preview = document.getElementById('profilePhotoPreview');
+            const nav = document.getElementById('profilePhotoNav');
+            if (!preview) return;
+            if (!file) {
+                preview.src = '';
+                preview.classList.add('is-hidden');
+                if (nav) {
+                    nav.src = '';
+                    nav.classList.add('is-hidden');
+                }
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                preview.src = reader.result;
+                preview.classList.remove('is-hidden');
+                if (nav) {
+                    nav.src = reader.result;
+                    nav.classList.remove('is-hidden');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    }
 
     // Botón y modal de registro de usuario (admin)
     const registerBtn = document.getElementById('registerUserBtn');
