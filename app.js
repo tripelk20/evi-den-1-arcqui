@@ -782,9 +782,8 @@ async function loadTasks() {
                 if (aVal == null) aVal = '';
                 if (bVal == null) bVal = '';
 
-                if (AppState.sortColumn === '_id') {
-                    const comparison = String(aVal).localeCompare(String(bVal), 'es', { numeric: true });
-                    return AppState.sortDirection === 'asc' ? comparison : -comparison;
+                if (AppState.sortColumn === 'id') {
+                    return AppState.sortDirection === 'asc' ? (aVal || 0) - (bVal || 0) : (bVal || 0) - (aVal || 0);
                 }
 
                 const comparison = String(aVal).localeCompare(String(bVal), 'es', { numeric: true });
@@ -798,7 +797,8 @@ async function loadTasks() {
             const row = document.createElement('tr');
             row.setAttribute('role', 'button');
             row.setAttribute('tabindex', '0');
-            row.setAttribute('aria-label', `Seleccionar tarea ${task._id}: ${task.title}`);
+        const taskDisplayId = task.numero != null ? task.numero : task._id;
+            row.setAttribute('aria-label', `Seleccionar tarea ${taskDisplayId}: ${task.title}`);
 
             row.addEventListener('click', () => selectTask(task._id));
             row.addEventListener('keydown', (e) => {
@@ -815,7 +815,7 @@ async function loadTasks() {
             const priorityClass = `priority-${(task.priority || 'Media').toLowerCase()}`;
 
             row.innerHTML = `
-            <td>${task._id}</td>
+            <td>${taskDisplayId}</td>
             <td>${Utils.escapeHtml(task.title)}</td>
             <td><span class="status-badge ${statusClass}">${Utils.escapeHtml(task.status || 'Pendiente')}</span></td>
             <td><span class="priority-badge ${priorityClass}">${Utils.escapeHtml(task.priority || 'Media')}</span></td>
@@ -1087,7 +1087,8 @@ async function loadProjectsTable() {
             const row = document.createElement('tr');
             row.setAttribute('role', 'button');
             row.setAttribute('tabindex', '0');
-            row.setAttribute('aria-label', `Seleccionar proyecto ${project._id}: ${project.name}`);
+            const projectDisplayId = project.numero != null ? project.numero : project._id;
+            row.setAttribute('aria-label', `Seleccionar proyecto ${projectDisplayId}: ${project.name}`);
 
             row.addEventListener('click', () => {
                 AppState.selectedProjectId = project._id;
@@ -1103,7 +1104,7 @@ async function loadProjectsTable() {
             });
 
             row.innerHTML = `
-                <td>${project._id}</td>
+                <td>${projectDisplayId}</td>
                 <td>${Utils.escapeHtml(project.name)}</td>
                 <td>${Utils.escapeHtml(project.description || '')}</td>
             `;
@@ -1341,7 +1342,7 @@ async function searchTasks() {
             const project = projects.find(p => p.name === task.projectId);
 
             row.innerHTML = `
-                <td>${task._id}</td>
+                <td>${task.numero != null ? task.numero : task._id}</td>
                 <td>${Utils.escapeHtml(task.title)}</td>
                 <td>${Utils.escapeHtml(task.status || 'Pendiente')}</td>
                 <td>${Utils.escapeHtml(task.priority || 'Media')}</td>
@@ -1408,7 +1409,8 @@ async function exportCSV() {
             const status = (task.status || 'Pendiente').replace(/"/g, '""');
             const priority = (task.priority || 'Media').replace(/"/g, '""');
             const projectName = (project ? project.name : 'Sin proyecto').replace(/"/g, '""');
-            csv += `${task._id},"${title}","${status}","${priority}","${projectName}"\n`;
+            const taskDisplayId = task.numero != null ? task.numero : task._id;
+            csv += `${taskDisplayId},"${title}","${status}","${priority}","${projectName}"\n`;
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });

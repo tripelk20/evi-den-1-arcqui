@@ -33,6 +33,7 @@ mongoose.connect(process.env.MONGO_URI, {
 // ────────────────────────────────────────────────
 
 const UserSchema = new mongoose.Schema({
+  numero: { type: Number, unique: true },
   username: { type: String, required: true, unique: true, trim: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['admin', 'user'], default: 'user' },
@@ -41,6 +42,7 @@ const UserSchema = new mongoose.Schema({
 const User = mongoose.model('User', UserSchema, 'users');  // fuerza el nombre de la colección
 
 const ProjectSchema = new mongoose.Schema({
+  numero: { type: Number, unique: true },
   name: { type: String, required: true, trim: true },
   description: String,
   createdBy: { type: String, required: true }, // username o _id
@@ -49,6 +51,7 @@ const ProjectSchema = new mongoose.Schema({
 const Project = mongoose.model('Project', ProjectSchema, 'projects');
 
 const TaskSchema = new mongoose.Schema({
+  numero: { type: Number, unique: true },
   title: { type: String, required: true, trim: true },
   description: String,
   status: { type: String, default: 'Pendiente' },
@@ -63,6 +66,7 @@ const TaskSchema = new mongoose.Schema({
 const Task = mongoose.model('Task', TaskSchema, 'tasks');
 
 const CommentSchema = new mongoose.Schema({
+  numero: { type: Number, unique: true },
   taskId: { type: mongoose.Schema.Types.ObjectId, required: true },
   user: { type: String, required: true },
   content: { type: String, required: true },
@@ -71,6 +75,7 @@ const CommentSchema = new mongoose.Schema({
 const Comment = mongoose.model('Comment', CommentSchema, 'comments');
 
 const HistorySchema = new mongoose.Schema({
+  numero: { type: Number, unique: true },
   taskId: { type: mongoose.Schema.Types.ObjectId, required: true },
   user: { type: String, required: true },
   action: { type: String, required: true },
@@ -82,6 +87,7 @@ const HistorySchema = new mongoose.Schema({
 const History = mongoose.model('History', HistorySchema, 'history');
 
 const NotificationSchema = new mongoose.Schema({
+  numero: { type: Number, unique: true },
   user: { type: String, required: true },
   message: { type: String, required: true },
   type: { type: String, default: 'info' },
@@ -90,6 +96,36 @@ const NotificationSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 const Notification = mongoose.model('Notification', NotificationSchema, 'notifications');
+
+const CounterSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  seq: { type: Number, default: 0 }
+});
+const Counter = mongoose.model('Counter', CounterSchema, 'counters');
+
+async function backfillNumeroForProjects() {
+  const maxDoc = await Project.findOne({ numero: { $ne: null } })
+    .sort({ numero: -1 })
+    .select('numero');
+  let next = maxDoc && maxDoc.numero ? maxDoc.numero + 1 : 1;
+  const missing = await Project.find({ numero: { $exists: false } }).sort({ createdAt: 1 });
+  if (!missing.length) return;
+  const ops = missing.map((doc) => ({
+    updateOne: {
+      filter: { _id: doc._id },
+      update: { $set: { numero: next++ } }
+    }
+  }));
+  await Project.bulkWrite(ops);
+}
+
+mongoose.connection.once('open', async () => {
+  try {
+    await backfillNumeroForProjects();
+  } catch (err) {
+    console.error('Error al asignar numeros a proyectos:', err.message);
+  }
+});
 
 // ────────────────────────────────────────────────
 // Middleware de autenticación simple (JWT)
@@ -140,7 +176,12 @@ app.get('/api/init', async (req, res) => {
   const admin = await User.findOne({ username: 'admin' });
   if (!admin) {
     const hashed = await bcrypt.hash('admin', 10);
-    await User.create({ username: 'admin', password: hashed, role: 'admin' });
+    const counter = await Counter.findOneAndUpdate(
+      { name: 'users' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    await User.create({ numero: counter.seq, username: 'admin', password: hashed, role: 'admin' });
     return res.json({ message: 'Admin creado' });
   }
   res.json({ message: 'Admin ya existe' });
@@ -148,7 +189,7 @@ app.get('/api/init', async (req, res) => {
 
 // Usuarios (admin registra / lista)
 app.get('/api/users', auth, async (req, res) => {
-  const users = await User.find({}, { username: 1, role: 1 }).sort({ username: 1 });
+  const users = await User.find({}, { username: 1, role: 1, numero: 1 }).sort({ username: 1 });
   res.json(users);
 });
 
@@ -160,10 +201,15 @@ app.post('/api/users', auth, requireAdmin, async (req, res) => {
     }
     const existing = await User.findOne({ username });
     if (existing) return res.status(400).json({ error: 'Usuario ya existe' });
+    const counter = await Counter.findOneAndUpdate(
+      { name: 'users' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
     const hashed = await bcrypt.hash(password, 10);
-    const user = new User({ username, password: hashed, role });
+    const user = new User({ numero: counter.seq, username, password: hashed, role });
     await user.save();
-    res.status(201).json({ username: user.username, role: user.role });
+    res.status(201).json({ numero: user.numero, username: user.username, role: user.role });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -177,9 +223,15 @@ app.get('/api/projects', auth, async (req, res) => {
 
 app.post('/api/projects', auth, async (req, res) => {
   try {
+    const counter = await Counter.findOneAndUpdate(
+      { name: 'projects' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
     const project = new Project({
       ...req.body,
-      createdBy: req.user.username
+      createdBy: req.user.username,
+      numero: counter.seq
     });
     await project.save();
     res.status(201).json(project);
@@ -211,9 +263,15 @@ app.delete('/api/projects/:id', auth, async (req, res) => {
 // Crear tarea (ejemplo completo)
 app.post('/api/tasks', auth, async (req, res) => {
   try {
+    const counter = await Counter.findOneAndUpdate(
+      { name: 'tasks' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
     const task = new Task({
       ...req.body,
-      createdBy: req.user.username
+      createdBy: req.user.username,
+      numero: counter.seq
     });
     await task.save();
     res.status(201).json(task);
@@ -261,10 +319,16 @@ app.get('/api/comments', auth, async (req, res) => {
 app.post('/api/comments', auth, async (req, res) => {
   try {
     const { taskId, content } = req.body;
+    const counter = await Counter.findOneAndUpdate(
+      { name: 'comments' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
     const comment = new Comment({
       taskId,
       content,
-      user: req.user.username
+      user: req.user.username,
+      numero: counter.seq
     });
     await comment.save();
     res.status(201).json(comment);
@@ -284,13 +348,19 @@ app.get('/api/history', auth, async (req, res) => {
 app.post('/api/history', auth, async (req, res) => {
   try {
     const { taskId, action, field, oldValue, newValue } = req.body;
+    const counter = await Counter.findOneAndUpdate(
+      { name: 'history' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
     const entry = new History({
       taskId,
       action,
       field,
       oldValue,
       newValue,
-      user: req.user.username
+      user: req.user.username,
+      numero: counter.seq
     });
     await entry.save();
     res.status(201).json(entry);
@@ -308,7 +378,12 @@ app.get('/api/notifications', auth, async (req, res) => {
 app.post('/api/notifications', auth, async (req, res) => {
   try {
     const { user, message, type = 'info', link } = req.body;
-    const notif = new Notification({ user, message, type, link });
+    const counter = await Counter.findOneAndUpdate(
+      { name: 'notifications' },
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    const notif = new Notification({ user, message, type, link, numero: counter.seq });
     await notif.save();
     res.status(201).json(notif);
   } catch (err) {
