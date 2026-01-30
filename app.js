@@ -4,7 +4,8 @@
 const CONFIG = {
     DEBOUNCE_DELAY: 300,
     MAX_NOTIFICATION_DISPLAY: 5,
-    NOTIFICATION_DURATION: 5000
+    NOTIFICATION_DURATION: 5000,
+    API_BASE_URL: 'http://localhost:3000/api'
 };
 let isAdmin = false;
 // ============================================
@@ -230,228 +231,116 @@ const ConfirmSystem = {
 };
 
 // ============================================
-// SISTEMA DE ALMACENAMIENTO MEJORADO
+// API (comunicación con servidor / MongoDB)
 // ============================================
-const Storage = {
-    // Inicializar datos por defecto
-    init() {
-        try {
-            if (!localStorage.getItem('users')) {
-                localStorage.setItem('users', JSON.stringify([
-                    { id: 1, username: 'admin', password: 'admin' },
-                    { id: 2, username: 'user1', password: 'user1' },
-                    { id: 3, username: 'user2', password: 'user2' }
-                ]));
-            }
-            if (!localStorage.getItem('projects')) {
-                localStorage.setItem('projects', JSON.stringify([
-                    { id: 1, name: 'Proyecto Demo', description: 'Proyecto de ejemplo' },
-                    { id: 2, name: 'Proyecto Alpha', description: 'Proyecto importante' },
-                    { id: 3, name: 'Proyecto Beta', description: 'Proyecto secundario' }
-                ]));
-            }
-            if (!localStorage.getItem('tasks')) {
-                localStorage.setItem('tasks', JSON.stringify([]));
-            }
-            if (!localStorage.getItem('comments')) {
-                localStorage.setItem('comments', JSON.stringify([]));
-            }
-            if (!localStorage.getItem('history')) {
-                localStorage.setItem('history', JSON.stringify([]));
-            }
-            if (!localStorage.getItem('notifications')) {
-                localStorage.setItem('notifications', JSON.stringify([]));
-            }
-            if (!localStorage.getItem('nextTaskId')) {
-                localStorage.setItem('nextTaskId', '1');
-            }
-            if (!localStorage.getItem('nextProjectId')) {
-                localStorage.setItem('nextProjectId', '4');
-            }
-        } catch (error) {
-            console.error('Error inicializando almacenamiento:', error);
-            NotificationSystem.error('Error al inicializar el almacenamiento local');
+const Api = {
+    async request(method, path, body = null) {
+        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        if (body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+            opts.body = JSON.stringify(body);
         }
-    },
-
-    // Métodos genéricos con manejo de errores
-    getItem(key, defaultValue = []) {
-        try {
-            const item = localStorage.getItem(key);
-            return item ? JSON.parse(item) : defaultValue;
-        } catch (error) {
-            console.error(`Error leyendo ${key}:`, error);
-            return defaultValue;
+        const res = await fetch(CONFIG.API_BASE_URL + path, opts);
+        const text = await res.text();
+        const data = text ? (() => { try { return JSON.parse(text); } catch (e) { return null; } })() : null;
+        if (!res.ok) {
+            const err = new Error(data && data.error ? data.error : 'Error en la petición');
+            err.status = res.status;
+            err.data = data;
+            throw err;
         }
+        return data;
     },
 
-    setItem(key, value) {
-        try {
-            localStorage.setItem(key, JSON.stringify(value));
-            return true;
-        } catch (error) {
-            console.error(`Error guardando ${key}:`, error);
-            NotificationSystem.error('Error al guardar datos. El almacenamiento puede estar lleno.');
-            return false;
-        }
+    async init() {
+        await this.request('GET', '/init');
     },
 
-    // Usuarios
-    getUsers() {
-        return this.getItem('users', []);
+    async getUsers() {
+        const list = await this.request('GET', '/users');
+        return Array.isArray(list) ? list : [];
     },
 
-    // Proyectos
-    getProjects() {
-        return this.getItem('projects', []);
+    async getProjects() {
+        const list = await this.request('GET', '/projects');
+        return Array.isArray(list) ? list : [];
     },
 
-    addProject(project) {
-        const projects = this.getProjects();
-        const id = parseInt(localStorage.getItem('nextProjectId') || '1');
-        project.id = id;
-        projects.push(project);
-        if (this.setItem('projects', projects)) {
-            localStorage.setItem('nextProjectId', String(id + 1));
-            return id;
-        }
-        return null;
+    async addProject(project) {
+        const res = await this.request('POST', '/projects', { name: project.name, description: project.description });
+        return res && res.id != null ? res.id : null;
     },
 
-    updateProject(id, project) {
-        const projects = this.getProjects();
-        const index = projects.findIndex(p => p.id === id);
-        if (index !== -1) {
-            project.id = id;
-            projects[index] = project;
-            return this.setItem('projects', projects);
-        }
-        return false;
+    async updateProject(id, project) {
+        await this.request('PUT', '/projects/' + id, { name: project.name, description: project.description });
+        return true;
     },
 
-    deleteProject(id) {
-        const projects = this.getProjects();
-        const filtered = projects.filter(p => p.id !== id);
-        return this.setItem('projects', filtered);
+    async deleteProject(id) {
+        await this.request('DELETE', '/projects/' + id);
+        return true;
     },
 
-    // Tareas
-    getTasks() {
-        return this.getItem('tasks', []);
+    async getTasks() {
+        const list = await this.request('GET', '/tasks');
+        return Array.isArray(list) ? list : [];
     },
 
-    addTask(task) {
-        const tasks = this.getTasks();
-        const id = parseInt(localStorage.getItem('nextTaskId') || '1');
-        task.id = id;
-        task.createdAt = new Date().toISOString();
-        task.updatedAt = new Date().toISOString();
-        tasks.push(task);
-        if (this.setItem('tasks', tasks)) {
-            localStorage.setItem('nextTaskId', String(id + 1));
-            return id;
-        }
-        return null;
+    async addTask(task) {
+        const res = await this.request('POST', '/tasks', task);
+        return res && res.id != null ? res.id : null;
     },
 
-    updateTask(id, task) {
-        const tasks = this.getTasks();
-        const index = tasks.findIndex(t => t.id === id);
-        if (index !== -1) {
-            task.id = id;
-            task.updatedAt = new Date().toISOString();
-            tasks[index] = task;
-            return this.setItem('tasks', tasks);
-        }
-        return false;
+    async updateTask(id, task) {
+        await this.request('PUT', '/tasks/' + id, task);
+        return true;
     },
 
-    deleteTask(id) {
-        const tasks = this.getTasks();
-        const filtered = tasks.filter(t => t.id !== id);
-        return this.setItem('tasks', filtered);
+    async deleteTask(id) {
+        await this.request('DELETE', '/tasks/' + id);
+        return true;
     },
 
-    // Comentarios
-    getComments() {
-        return this.getItem('comments', []);
+    async getComments(taskId = null) {
+        const path = taskId != null ? '/comments?taskId=' + taskId : '/comments';
+        const list = await this.request('GET', path);
+        return Array.isArray(list) ? list : [];
     },
 
-    addComment(comment) {
-        const comments = this.getComments();
-        comment.id = comments.length + 1;
-        comment.createdAt = new Date().toISOString();
-        comments.push(comment);
-        this.setItem('comments', comments);
+    async addComment(comment) {
+        await this.request('POST', '/comments', comment);
     },
 
-    // Historial
-    getHistory() {
-        return this.getItem('history', []);
+    async getHistory(taskId = null) {
+        const path = taskId != null ? '/history?taskId=' + taskId : '/history';
+        const list = await this.request('GET', path);
+        return Array.isArray(list) ? list : [];
     },
 
-    addHistory(entry) {
-        const history = this.getHistory();
-        entry.id = history.length + 1;
-        entry.timestamp = new Date().toISOString();
-        history.push(entry);
-        this.setItem('history', history);
+    async addHistory(entry) {
+        await this.request('POST', '/history', entry);
     },
 
-    // Notificaciones
-    getNotifications() {
-        return this.getItem('notifications', []);
+    async getNotifications(userId = null) {
+        const path = userId != null ? '/notifications?userId=' + userId : '/notifications';
+        const list = await this.request('GET', path);
+        return Array.isArray(list) ? list : [];
     },
 
-    addNotification(notification) {
-        const notifications = this.getNotifications();
-        notification.id = notifications.length + 1;
-        notification.read = false;
-        notification.createdAt = new Date().toISOString();
-        notifications.push(notification);
-        this.setItem('notifications', notifications);
+    async addNotification(notification) {
+        await this.request('POST', '/notifications', notification);
     },
 
-    markNotificationsRead(userId) {
-        const notifications = this.getNotifications();
-        notifications.forEach(n => {
-            if (n.userId === userId) {
-                n.read = true;
-            }
-        });
-        this.setItem('notifications', notifications);
+    async markNotificationsRead(userId) {
+        await this.request('PATCH', '/notifications/read', { userId });
     },
 
-    // Backup y Restore
-    exportAll() {
-        return {
-            users: this.getUsers(),
-            projects: this.getProjects(),
-            tasks: this.getTasks(),
-            comments: this.getComments(),
-            history: this.getHistory(),
-            notifications: this.getNotifications(),
-            nextTaskId: localStorage.getItem('nextTaskId'),
-            nextProjectId: localStorage.getItem('nextProjectId'),
-            exportDate: new Date().toISOString()
-        };
+    async exportAll() {
+        return await this.request('GET', '/backup');
     },
 
-    importAll(data) {
-        try {
-            if (data.users) this.setItem('users', data.users);
-            if (data.projects) this.setItem('projects', data.projects);
-            if (data.tasks) this.setItem('tasks', data.tasks);
-            if (data.comments) this.setItem('comments', data.comments);
-            if (data.history) this.setItem('history', data.history);
-            if (data.notifications) this.setItem('notifications', data.notifications);
-            if (data.nextTaskId) localStorage.setItem('nextTaskId', data.nextTaskId);
-            if (data.nextProjectId) localStorage.setItem('nextProjectId', data.nextProjectId);
-            return true;
-        } catch (error) {
-            console.error('Error importando datos:', error);
-            return false;
-        }
+    async importAll(data) {
+        await this.request('POST', '/restore', data);
+        return true;
     }
 };
 
@@ -525,31 +414,38 @@ function updateUIAfterLogin(username) {
     }
 }
 
-function login() {
-    return Utils.safeExecute(() => {
-        const username = sessionStorage.getItem('username');
-        const password = sessionStorage.getItem('password');
+async function login() {
+    const username = sessionStorage.getItem('username');
+    const password = sessionStorage.getItem('password');
 
-        if (!username || !password) {
-            window.location.href = 'login.html';
-            return;
-        }
+    if (!username || !password) {
+        window.location.href = 'login.html';
+        return;
+    }
 
-        const users = Storage.getUsers();
-        const user = users.find(u => u.username === username && u.password === password);
-
+    try {
+        const data = await Api.request('POST', '/login', { username, password });
+        const user = data && data.user ? data.user : null;
         if (user) {
-            AppState.currentUser = user;
+            AppState.currentUser = { id: user.id, username: user.username };
+            sessionStorage.setItem('userId', String(user.id));
             updateUIAfterLogin(user.username);
-            loadTasks();
-            updateStats();
+            await loadTasks();
+            await updateStats();
             NotificationSystem.success(`Bienvenido, ${user.username}`);
         } else {
             sessionStorage.removeItem('username');
             sessionStorage.removeItem('password');
+            sessionStorage.removeItem('userId');
             window.location.href = 'login.html';
         }
-    }, 'Error al iniciar sesión');
+    } catch (err) {
+        sessionStorage.removeItem('username');
+        sessionStorage.removeItem('password');
+        sessionStorage.removeItem('userId');
+        NotificationSystem.error(err.data && err.data.error ? err.data.error : 'Error al iniciar sesión');
+        window.location.href = 'login.html';
+    }
 }
 
 function logout() {
@@ -558,6 +454,7 @@ function logout() {
     AppState.selectedProjectId = null;
     sessionStorage.removeItem('username');
     sessionStorage.removeItem('password');
+    sessionStorage.removeItem('userId');
     clearTaskForm();
     NotificationSystem.success('Sesión cerrada');
     setTimeout(() => {
@@ -565,7 +462,7 @@ function logout() {
     }, 800);
 }
 
-function registerNewUser() {
+async function registerNewUser() {
     if (!isAdmin) {
         NotificationSystem.error('Solo el admin puede registrar usuarios');
         return;
@@ -585,16 +482,8 @@ function registerNewUser() {
         return;
     }
 
-    const users = Storage.getUsers();
-    if (users.find(u => u.username === newUsername)) {
-        NotificationSystem.error('El usuario ya existe');
-        return;
-    }
-
-    const newId = Math.max(...users.map(u => u.id), 0) + 1;
-    const newUser = { id: newId, username: newUsername, password: newPassword };
-    users.push(newUser);
-    if (Storage.setItem('users', users)) {
+    try {
+        await Api.request('POST', '/users', { username: newUsername, password: newPassword });
         NotificationSystem.success(`Usuario ${newUsername} registrado exitosamente`);
         const modal = bootstrap.Modal.getInstance(document.getElementById('registerUserModal'));
         if (modal) modal.hide();
@@ -603,9 +492,9 @@ function registerNewUser() {
         document.getElementById('newPassword').value = '';
         document.getElementById('newPasswordConfirm').value = '';
 
-        loadUsers();
-    } else {
-        NotificationSystem.error('Error al registrar el usuario');
+        await loadUsers();
+    } catch (err) {
+        NotificationSystem.error(err.data && err.data.error ? err.data.error : 'Error al registrar el usuario');
     }
 }
 
@@ -646,83 +535,93 @@ function showTab(tabName) {
 // ============================================
 // CARGA DE DATOS EN SELECTS
 // ============================================
-function loadUsers() {
-    const users = Storage.getUsers();
-    const select = document.getElementById('taskAssigned');
-    if (!select) return;
-    
-    select.innerHTML = '<option value="0">Sin asignar</option>';
-    users.forEach(user => {
-        const option = document.createElement('option');
-        option.value = user.id;
-        option.textContent = Utils.escapeHtml(user.username);
-        select.appendChild(option);
-    });
-}
+async function loadUsers() {
+    try {
+        const users = await Api.getUsers();
+        const select = document.getElementById('taskAssigned');
+        if (!select) return;
 
-function loadProjects() {
-    const projects = Storage.getProjects();
-    const select = document.getElementById('taskProject');
-    const searchSelect = document.getElementById('searchProject');
-    
-    if (select) {
-        select.innerHTML = '';
-        projects.forEach(project => {
+        select.innerHTML = '<option value="0">Sin asignar</option>';
+        users.forEach(user => {
             const option = document.createElement('option');
-            option.value = project.id;
-            option.textContent = Utils.escapeHtml(project.name);
+            option.value = user.id;
+            option.textContent = Utils.escapeHtml(user.username);
             select.appendChild(option);
         });
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al cargar usuarios');
     }
+}
 
-    if (searchSelect) {
-        searchSelect.innerHTML = '<option value="0">Todos</option>';
-        projects.forEach(project => {
-            const option = document.createElement('option');
-            option.value = project.id;
-            option.textContent = Utils.escapeHtml(project.name);
-            searchSelect.appendChild(option);
-        });
+async function loadProjects() {
+    try {
+        const projects = await Api.getProjects();
+        const select = document.getElementById('taskProject');
+        const searchSelect = document.getElementById('searchProject');
+
+        if (select) {
+            select.innerHTML = '';
+            projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = Utils.escapeHtml(project.name);
+                select.appendChild(option);
+            });
+        }
+
+        if (searchSelect) {
+            searchSelect.innerHTML = '<option value="0">Todos</option>';
+            projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = Utils.escapeHtml(project.name);
+                searchSelect.appendChild(option);
+            });
+        }
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al cargar proyectos');
     }
 }
 
 // ============================================
 // GESTIÓN DE TAREAS
 // ============================================
-function addTask() {
+async function addTask() {
     if (!AppState.currentUser) {
         NotificationSystem.warning('Debes iniciar sesión');
         return;
     }
 
-    return Utils.safeExecute(() => {
-        const title = Utils.sanitize(document.getElementById('taskTitle').value.trim());
-        const task = {
-            title: title,
-            description: Utils.sanitize(document.getElementById('taskDescription').value.trim()),
-            status: document.getElementById('taskStatus').value || 'Pendiente',
-            priority: document.getElementById('taskPriority').value || 'Media',
-            projectId: parseInt(document.getElementById('taskProject').value) || 0,
-            assignedTo: parseInt(document.getElementById('taskAssigned').value) || 0,
-            dueDate: document.getElementById('taskDueDate').value || '',
-            estimatedHours: parseFloat(document.getElementById('taskHours').value) || 0,
-            actualHours: 0,
-            createdBy: AppState.currentUser.id
-        };
+    const title = Utils.sanitize(document.getElementById('taskTitle').value.trim());
+    const task = {
+        title: title,
+        description: Utils.sanitize(document.getElementById('taskDescription').value.trim()),
+        status: document.getElementById('taskStatus').value || 'Pendiente',
+        priority: document.getElementById('taskPriority').value || 'Media',
+        projectId: parseInt(document.getElementById('taskProject').value) || 0,
+        assignedTo: parseInt(document.getElementById('taskAssigned').value) || 0,
+        dueDate: document.getElementById('taskDueDate').value || '',
+        estimatedHours: parseFloat(document.getElementById('taskHours').value) || 0,
+        actualHours: 0,
+        createdBy: AppState.currentUser.id
+    };
 
-        const errors = Validation.validateTask(task);
-        if (errors.length > 0) {
-            NotificationSystem.error(errors.join(', '));
-            return;
-        }
+    const errors = Validation.validateTask(task);
+    if (errors.length > 0) {
+        NotificationSystem.error(errors.join(', '));
+        return;
+    }
 
-        const taskId = Storage.addTask(task);
+    try {
+        const taskId = await Api.addTask(task);
         if (!taskId) {
             NotificationSystem.error('Error al agregar la tarea');
             return;
         }
 
-        Storage.addHistory({
+        await Api.addHistory({
             taskId: taskId,
             userId: AppState.currentUser.id,
             action: 'CREATED',
@@ -731,34 +630,38 @@ function addTask() {
         });
 
         if (task.assignedTo > 0) {
-            Storage.addNotification({
+            await Api.addNotification({
                 userId: task.assignedTo,
                 message: 'Nueva tarea asignada: ' + task.title,
                 type: 'task_assigned'
             });
         }
 
-        loadTasks();
+        await loadTasks();
         clearTaskForm();
-        updateStats();
+        await updateStats();
         NotificationSystem.success('Tarea agregada correctamente');
-    }, 'Error al agregar tarea');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error(err.data && err.data.error ? err.data.error : 'Error al agregar tarea');
+    }
 }
 
-function updateTask() {
+async function updateTask() {
     if (!AppState.selectedTaskId) {
         NotificationSystem.warning('Selecciona una tarea de la tabla');
         return;
     }
 
-    return Utils.safeExecute(() => {
-        const title = Utils.sanitize(document.getElementById('taskTitle').value.trim());
-        const oldTask = Storage.getTasks().find(t => t.id === AppState.selectedTaskId);
+    try {
+        const tasks = await Api.getTasks();
+        const oldTask = tasks.find(t => t.id === AppState.selectedTaskId);
         if (!oldTask) {
             NotificationSystem.error('Tarea no encontrada');
             return;
         }
 
+        const title = Utils.sanitize(document.getElementById('taskTitle').value.trim());
         const task = {
             title: title,
             description: Utils.sanitize(document.getElementById('taskDescription').value.trim()),
@@ -780,7 +683,7 @@ function updateTask() {
         }
 
         if (oldTask.status !== task.status) {
-            Storage.addHistory({
+            await Api.addHistory({
                 taskId: AppState.selectedTaskId,
                 userId: AppState.currentUser.id,
                 action: 'STATUS_CHANGED',
@@ -790,7 +693,7 @@ function updateTask() {
         }
 
         if (oldTask.title !== task.title) {
-            Storage.addHistory({
+            await Api.addHistory({
                 taskId: AppState.selectedTaskId,
                 userId: AppState.currentUser.id,
                 action: 'TITLE_CHANGED',
@@ -799,24 +702,24 @@ function updateTask() {
             });
         }
 
-        if (!Storage.updateTask(AppState.selectedTaskId, task)) {
-            NotificationSystem.error('Error al actualizar la tarea');
-            return;
-        }
+        await Api.updateTask(AppState.selectedTaskId, task);
 
         if (task.assignedTo > 0) {
-            Storage.addNotification({
+            await Api.addNotification({
                 userId: task.assignedTo,
                 message: 'Tarea actualizada: ' + task.title,
                 type: 'task_updated'
             });
         }
 
-        loadTasks();
+        await loadTasks();
         clearTaskForm();
-        updateStats();
+        await updateStats();
         NotificationSystem.success('Tarea actualizada correctamente');
-    }, 'Error al actualizar tarea');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error(err.data && err.data.error ? err.data.error : 'Error al actualizar tarea');
+    }
 }
 
 async function deleteTask() {
@@ -825,19 +728,20 @@ async function deleteTask() {
         return;
     }
 
-    const task = Storage.getTasks().find(t => t.id === AppState.selectedTaskId);
-    if (!task) {
-        NotificationSystem.error('Tarea no encontrada');
-        return;
-    }
+    try {
+        const tasks = await Api.getTasks();
+        const task = tasks.find(t => t.id === AppState.selectedTaskId);
+        if (!task) {
+            NotificationSystem.error('Tarea no encontrada');
+            return;
+        }
 
-    const confirmed = await ConfirmSystem.show('Confirmar Eliminación', 
-        `¿Estás seguro de eliminar la tarea "${task.title}"?`);
-    
-    if (!confirmed) return;
+        const confirmed = await ConfirmSystem.show('Confirmar Eliminación',
+            `¿Estás seguro de eliminar la tarea "${task.title}"?`);
 
-    return Utils.safeExecute(() => {
-        Storage.addHistory({
+        if (!confirmed) return;
+
+        await Api.addHistory({
             taskId: AppState.selectedTaskId,
             userId: AppState.currentUser.id,
             action: 'DELETED',
@@ -845,16 +749,16 @@ async function deleteTask() {
             newValue: ''
         });
 
-        if (!Storage.deleteTask(AppState.selectedTaskId)) {
-            NotificationSystem.error('Error al eliminar la tarea');
-            return;
-        }
+        await Api.deleteTask(AppState.selectedTaskId);
 
-        loadTasks();
+        await loadTasks();
         clearTaskForm();
-        updateStats();
+        await updateStats();
         NotificationSystem.success('Tarea eliminada correctamente');
-    }, 'Error al eliminar tarea');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error(err.data && err.data.error ? err.data.error : 'Error al eliminar tarea');
+    }
 }
 
 function clearTaskForm() {
@@ -869,32 +773,26 @@ function clearTaskForm() {
     AppState.selectedTaskId = null;
 }
 
-function loadTasks() {
-    return Utils.safeExecute(() => {
-        const tasks = Storage.getTasks();
-        const projects = Storage.getProjects();
-        const users = Storage.getUsers();
+async function loadTasks() {
+    try {
+        const [tasks, projects, users] = await Promise.all([Api.getTasks(), Api.getProjects(), Api.getUsers()]);
         const tbody = document.getElementById('tasksTableBody');
-        
+
         if (!tbody) return;
 
-        // Aplicar ordenamiento si existe
         let sortedTasks = [...tasks];
         if (AppState.sortColumn) {
             sortedTasks.sort((a, b) => {
                 let aVal = a[AppState.sortColumn];
                 let bVal = b[AppState.sortColumn];
-                
-                // Manejar valores nulos/undefined
+
                 if (aVal == null) aVal = '';
                 if (bVal == null) bVal = '';
-                
-                // Comparación numérica para IDs
+
                 if (AppState.sortColumn === 'id') {
                     return AppState.sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
                 }
-                
-                // Comparación de texto
+
                 const comparison = String(aVal).localeCompare(String(bVal), 'es', { numeric: true });
                 return AppState.sortDirection === 'asc' ? comparison : -comparison;
             });
@@ -907,7 +805,7 @@ function loadTasks() {
             row.setAttribute('role', 'button');
             row.setAttribute('tabindex', '0');
             row.setAttribute('aria-label', `Seleccionar tarea ${task.id}: ${task.title}`);
-            
+
             row.addEventListener('click', () => selectTask(task.id));
             row.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -919,10 +817,10 @@ function loadTasks() {
             const project = projects.find(p => p.id === task.projectId);
             const user = users.find(u => u.id === task.assignedTo);
 
-        const statusClass = `status-${(task.status || 'Pendiente').toLowerCase().replace(/\s+/g, '-')}`;
-        const priorityClass = `priority-${(task.priority || 'Media').toLowerCase()}`;
-        
-        row.innerHTML = `
+            const statusClass = `status-${(task.status || 'Pendiente').toLowerCase().replace(/\s+/g, '-')}`;
+            const priorityClass = `priority-${(task.priority || 'Media').toLowerCase()}`;
+
+            row.innerHTML = `
             <td>${task.id}</td>
             <td>${Utils.escapeHtml(task.title)}</td>
             <td><span class="status-badge ${statusClass}">${Utils.escapeHtml(task.status || 'Pendiente')}</span></td>
@@ -935,9 +833,11 @@ function loadTasks() {
             tbody.appendChild(row);
         });
 
-        // Agregar ordenamiento a encabezados
         setupTableSorting();
-    }, 'Error al cargar tareas');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al cargar tareas');
+    }
 }
 
 function setupTableSorting() {
@@ -988,10 +888,12 @@ function setupTableSorting() {
     });
 }
 
-function selectTask(id) {
+async function selectTask(id) {
     AppState.selectedTaskId = id;
-    const task = Storage.getTasks().find(t => t.id === id);
-    if (!task) return;
+    try {
+        const tasks = await Api.getTasks();
+        const task = tasks.find(t => t.id === id);
+        if (!task) return;
 
     document.getElementById('taskTitle').value = task.title || '';
     document.getElementById('taskDescription').value = task.description || '';
@@ -1030,11 +932,14 @@ function selectTask(id) {
 
     document.getElementById('taskDueDate').value = task.dueDate || '';
     document.getElementById('taskHours').value = task.estimatedHours || '';
+    } catch (err) {
+        console.error(err);
+    }
 }
 
-function updateStats() {
-    return Utils.safeExecute(() => {
-        const tasks = Storage.getTasks();
+async function updateStats() {
+    try {
+        const tasks = await Api.getTasks();
         let total = tasks.length;
         let completed = 0;
         let pending = 0;
@@ -1063,52 +968,58 @@ function updateStats() {
 
         const statsText = document.getElementById('statsText');
         if (statsText) {
-            statsText.textContent = 
+            statsText.textContent =
                 `Total: ${total} | Completadas: ${completed} | Pendientes: ${pending} | Alta Prioridad: ${highPriority} | Vencidas: ${overdue}`;
         }
-    });
+    } catch (err) {
+        console.error(err);
+    }
 }
 
 // ============================================
 // GESTIÓN DE PROYECTOS
 // ============================================
-function addProject() {
-    return Utils.safeExecute(() => {
-        const name = Utils.sanitize(document.getElementById('projectName').value.trim());
-        const project = {
-            name: name,
-            description: Utils.sanitize(document.getElementById('projectDescription').value.trim())
-        };
+async function addProject() {
+    const name = Utils.sanitize(document.getElementById('projectName').value.trim());
+    const project = {
+        name: name,
+        description: Utils.sanitize(document.getElementById('projectDescription').value.trim())
+    };
 
-        const errors = Validation.validateProject(project);
-        if (errors.length > 0) {
-            NotificationSystem.error(errors.join(', '));
-            return;
-        }
+    const errors = Validation.validateProject(project);
+    if (errors.length > 0) {
+        NotificationSystem.error(errors.join(', '));
+        return;
+    }
 
-        const projectId = Storage.addProject(project);
+    try {
+        const projectId = await Api.addProject(project);
         if (!projectId) {
             NotificationSystem.error('Error al agregar el proyecto');
             return;
         }
 
-        loadProjects();
-        loadProjectsTable();
+        await loadProjects();
+        await loadProjectsTable();
         document.getElementById('projectName').value = '';
         document.getElementById('projectDescription').value = '';
         NotificationSystem.success('Proyecto agregado correctamente');
-    }, 'Error al agregar proyecto');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error(err.data && err.data.error ? err.data.error : 'Error al agregar proyecto');
+    }
 }
 
-function updateProject() {
+async function updateProject() {
     if (!AppState.selectedProjectId) {
         NotificationSystem.warning('Selecciona un proyecto de la tabla');
         return;
     }
 
-    return Utils.safeExecute(() => {
+    try {
         const name = Utils.sanitize(document.getElementById('projectName').value.trim());
-        const project = Storage.getProjects().find(p => p.id === AppState.selectedProjectId);
+        const projects = await Api.getProjects();
+        const project = projects.find(p => p.id === AppState.selectedProjectId);
         if (!project) {
             NotificationSystem.error('Proyecto no encontrado');
             return;
@@ -1125,15 +1036,15 @@ function updateProject() {
             return;
         }
 
-        if (!Storage.updateProject(AppState.selectedProjectId, updatedProject)) {
-            NotificationSystem.error('Error al actualizar el proyecto');
-            return;
-        }
+        await Api.updateProject(AppState.selectedProjectId, updatedProject);
 
-        loadProjects();
-        loadProjectsTable();
+        await loadProjects();
+        await loadProjectsTable();
         NotificationSystem.success('Proyecto actualizado correctamente');
-    }, 'Error al actualizar proyecto');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error(err.data && err.data.error ? err.data.error : 'Error al actualizar proyecto');
+    }
 }
 
 async function deleteProject() {
@@ -1142,37 +1053,38 @@ async function deleteProject() {
         return;
     }
 
-    const project = Storage.getProjects().find(p => p.id === AppState.selectedProjectId);
-    if (!project) {
-        NotificationSystem.error('Proyecto no encontrado');
-        return;
-    }
-
-    const confirmed = await ConfirmSystem.show('Confirmar Eliminación', 
-        `¿Estás seguro de eliminar el proyecto "${project.name}"?`);
-    
-    if (!confirmed) return;
-
-    return Utils.safeExecute(() => {
-        if (!Storage.deleteProject(AppState.selectedProjectId)) {
-            NotificationSystem.error('Error al eliminar el proyecto');
+    try {
+        const projects = await Api.getProjects();
+        const project = projects.find(p => p.id === AppState.selectedProjectId);
+        if (!project) {
+            NotificationSystem.error('Proyecto no encontrado');
             return;
         }
 
-        loadProjects();
-        loadProjectsTable();
+        const confirmed = await ConfirmSystem.show('Confirmar Eliminación',
+            `¿Estás seguro de eliminar el proyecto "${project.name}"?`);
+
+        if (!confirmed) return;
+
+        await Api.deleteProject(AppState.selectedProjectId);
+
+        await loadProjects();
+        await loadProjectsTable();
         document.getElementById('projectName').value = '';
         document.getElementById('projectDescription').value = '';
         AppState.selectedProjectId = null;
         NotificationSystem.success('Proyecto eliminado correctamente');
-    }, 'Error al eliminar proyecto');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error(err.data && err.data.error ? err.data.error : 'Error al eliminar proyecto');
+    }
 }
 
-function loadProjectsTable() {
-    return Utils.safeExecute(() => {
-        const projects = Storage.getProjects();
+async function loadProjectsTable() {
+    try {
+        const projects = await Api.getProjects();
         const tbody = document.getElementById('projectsTableBody');
-        
+
         if (!tbody) return;
 
         tbody.innerHTML = '';
@@ -1182,7 +1094,7 @@ function loadProjectsTable() {
             row.setAttribute('role', 'button');
             row.setAttribute('tabindex', '0');
             row.setAttribute('aria-label', `Seleccionar proyecto ${project.id}: ${project.name}`);
-            
+
             row.addEventListener('click', () => {
                 AppState.selectedProjectId = project.id;
                 document.getElementById('projectName').value = project.name;
@@ -1204,46 +1116,52 @@ function loadProjectsTable() {
 
             tbody.appendChild(row);
         });
-    }, 'Error al cargar proyectos');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al cargar proyectos');
+    }
 }
 
 // ============================================
 // COMENTARIOS
 // ============================================
-function addComment() {
+async function addComment() {
     if (!AppState.currentUser) {
         NotificationSystem.warning('Debes iniciar sesión');
         return;
     }
 
-    return Utils.safeExecute(() => {
-        const taskId = parseInt(document.getElementById('commentTaskId').value);
-        const text = Utils.sanitize(document.getElementById('commentText').value.trim());
+    const taskId = parseInt(document.getElementById('commentTaskId').value);
+    const text = Utils.sanitize(document.getElementById('commentText').value.trim());
 
-        if (!taskId) {
-            NotificationSystem.warning('ID de tarea requerido');
-            return;
-        }
+    if (!taskId) {
+        NotificationSystem.warning('ID de tarea requerido');
+        return;
+    }
 
-        if (!text) {
-            NotificationSystem.warning('El comentario no puede estar vacío');
-            return;
-        }
+    if (!text) {
+        NotificationSystem.warning('El comentario no puede estar vacío');
+        return;
+    }
 
-        Storage.addComment({
+    try {
+        await Api.addComment({
             taskId: taskId,
             userId: AppState.currentUser.id,
             commentText: text
         });
 
         document.getElementById('commentText').value = '';
-        loadComments();
+        await loadComments();
         NotificationSystem.success('Comentario agregado correctamente');
-    }, 'Error al agregar comentario');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error(err.data && err.data.error ? err.data.error : 'Error al agregar comentario');
+    }
 }
 
-function loadComments() {
-    return Utils.safeExecute(() => {
+async function loadComments() {
+    try {
         const taskId = parseInt(document.getElementById('commentTaskId').value);
         const commentsArea = document.getElementById('commentsArea');
         if (!commentsArea) return;
@@ -1253,11 +1171,10 @@ function loadComments() {
             return;
         }
 
-        const comments = Storage.getComments().filter(c => c.taskId === taskId);
-        const users = Storage.getUsers();
-        
+        const [comments, users] = await Promise.all([Api.getComments(taskId), Api.getUsers()]);
+
         let text = `=== COMENTARIOS TAREA #${taskId} ===\n\n`;
-        
+
         if (comments.length === 0) {
             text += 'No hay comentarios\n';
         } else {
@@ -1269,14 +1186,17 @@ function loadComments() {
         }
 
         commentsArea.value = text;
-    }, 'Error al cargar comentarios');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al cargar comentarios');
+    }
 }
 
 // ============================================
 // HISTORIAL
 // ============================================
-function loadHistory() {
-    return Utils.safeExecute(() => {
+async function loadHistory() {
+    try {
         const taskId = parseInt(document.getElementById('historyTaskId').value);
         const historyArea = document.getElementById('historyArea');
         if (!historyArea) return;
@@ -1286,11 +1206,10 @@ function loadHistory() {
             return;
         }
 
-        const history = Storage.getHistory().filter(h => h.taskId === taskId);
-        const users = Storage.getUsers();
-        
+        const [history, users] = await Promise.all([Api.getHistory(taskId), Api.getUsers()]);
+
         let text = `=== HISTORIAL TAREA #${taskId} ===\n\n`;
-        
+
         if (history.length === 0) {
             text += 'No hay historial\n';
         } else {
@@ -1305,18 +1224,20 @@ function loadHistory() {
         }
 
         historyArea.value = text;
-    }, 'Error al cargar historial');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al cargar historial');
+    }
 }
 
-function loadAllHistory() {
-    return Utils.safeExecute(() => {
-        const history = Storage.getHistory();
-        const users = Storage.getUsers();
+async function loadAllHistory() {
+    try {
+        const [history, users] = await Promise.all([Api.getHistory(), Api.getUsers()]);
         const historyArea = document.getElementById('historyArea');
         if (!historyArea) return;
-        
+
         let text = '=== HISTORIAL COMPLETO ===\n\n';
-        
+
         if (history.length === 0) {
             text += 'No hay historial\n';
         } else {
@@ -1331,45 +1252,53 @@ function loadAllHistory() {
         }
 
         historyArea.value = text;
-    }, 'Error al cargar historial completo');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al cargar historial completo');
+    }
 }
 
 // ============================================
 // NOTIFICACIONES
 // ============================================
-function loadNotifications() {
+async function loadNotifications() {
     if (!AppState.currentUser) return;
 
-    return Utils.safeExecute(() => {
-        const notifications = Storage.getNotifications().filter(n => 
-            n.userId === AppState.currentUser.id && !n.read
-        );
+    try {
+        const notifications = await Api.getNotifications(AppState.currentUser.id);
+        const unread = notifications.filter(n => !n.read);
         const notificationsArea = document.getElementById('notificationsArea');
         if (!notificationsArea) return;
-        
+
         let text = '=== NOTIFICACIONES ===\n\n';
-        
-        if (notifications.length === 0) {
+
+        if (unread.length === 0) {
             text += 'No hay notificaciones nuevas\n';
         } else {
-            notifications.forEach(notif => {
+            unread.forEach(notif => {
                 const date = new Date(notif.createdAt).toLocaleString('es-ES');
                 text += `• [${notif.type}] ${notif.message} (${date})\n`;
             });
         }
 
         notificationsArea.value = text;
-    }, 'Error al cargar notificaciones');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al cargar notificaciones');
+    }
 }
 
-function markNotificationsRead() {
+async function markNotificationsRead() {
     if (!AppState.currentUser) return;
 
-    return Utils.safeExecute(() => {
-        Storage.markNotificationsRead(AppState.currentUser.id);
-        loadNotifications();
+    try {
+        await Api.markNotificationsRead(AppState.currentUser.id);
+        await loadNotifications();
         NotificationSystem.success('Notificaciones marcadas como leídas');
-    }, 'Error al marcar notificaciones');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al marcar notificaciones');
+    }
 }
 
 // ============================================
@@ -1379,24 +1308,23 @@ const debouncedSearch = Utils.debounce(() => {
     searchTasks();
 }, CONFIG.DEBOUNCE_DELAY);
 
-function searchTasks() {
-    return Utils.safeExecute(() => {
+async function searchTasks() {
+    try {
         const searchText = document.getElementById('searchText').value.toLowerCase().trim();
         const statusFilter = document.getElementById('searchStatus').value;
         const priorityFilter = document.getElementById('searchPriority').value;
         const projectFilter = parseInt(document.getElementById('searchProject').value) || 0;
 
-        const tasks = Storage.getTasks();
-        const projects = Storage.getProjects();
+        const [tasks, projects] = await Promise.all([Api.getTasks(), Api.getProjects()]);
         const tbody = document.getElementById('searchTableBody');
-        
+
         if (!tbody) return;
 
         tbody.innerHTML = '';
 
         const filtered = tasks.filter(task => {
-            if (searchText && !task.title.toLowerCase().includes(searchText) && 
-                !task.description.toLowerCase().includes(searchText)) {
+            if (searchText && !task.title.toLowerCase().includes(searchText) &&
+                !(task.description || '').toLowerCase().includes(searchText)) {
                 return false;
             }
             if (statusFilter && task.status !== statusFilter) {
@@ -1432,20 +1360,24 @@ function searchTasks() {
 
             tbody.appendChild(row);
         });
-    }, 'Error al buscar tareas');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al buscar tareas');
+    }
 }
 
 // ============================================
 // REPORTES
 // ============================================
-function generateReport(type) {
-    return Utils.safeExecute(() => {
+async function generateReport(type) {
+    try {
         let text = `=== REPORTE: ${type.toUpperCase()} ===\n\n`;
         const reportsArea = document.getElementById('reportsArea');
         if (!reportsArea) return;
 
+        const [tasks, projects, users] = await Promise.all([Api.getTasks(), Api.getProjects(), Api.getUsers()]);
+
         if (type === 'tasks') {
-            const tasks = Storage.getTasks();
             const statusCount = {};
             tasks.forEach(task => {
                 const status = task.status || 'Pendiente';
@@ -1455,15 +1387,11 @@ function generateReport(type) {
                 text += `${status}: ${statusCount[status]} tareas\n`;
             });
         } else if (type === 'projects') {
-            const projects = Storage.getProjects();
-            const tasks = Storage.getTasks();
             projects.forEach(project => {
                 const count = tasks.filter(t => t.projectId === project.id).length;
                 text += `${project.name}: ${count} tareas\n`;
             });
         } else if (type === 'users') {
-            const users = Storage.getUsers();
-            const tasks = Storage.getTasks();
             users.forEach(user => {
                 const count = tasks.filter(t => t.assignedTo === user.id).length;
                 text += `${user.username}: ${count} tareas asignadas\n`;
@@ -1472,16 +1400,18 @@ function generateReport(type) {
 
         reportsArea.value = text;
         NotificationSystem.success('Reporte generado correctamente');
-    }, 'Error al generar reporte');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al generar reporte');
+    }
 }
 
-function exportCSV() {
-    return Utils.safeExecute(() => {
-        const tasks = Storage.getTasks();
-        const projects = Storage.getProjects();
-        
+async function exportCSV() {
+    try {
+        const [tasks, projects] = await Promise.all([Api.getTasks(), Api.getProjects()]);
+
         let csv = 'ID,Título,Estado,Prioridad,Proyecto\n';
-        
+
         tasks.forEach(task => {
             const project = projects.find(p => p.id === task.projectId);
             const title = (task.title || '').replace(/"/g, '""');
@@ -1498,17 +1428,20 @@ function exportCSV() {
         a.download = `export_tasks_${new Date().toISOString().split('T')[0]}.csv`;
         a.click();
         window.URL.revokeObjectURL(url);
-        
+
         NotificationSystem.success('Datos exportados a CSV correctamente');
-    }, 'Error al exportar CSV');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al exportar CSV');
+    }
 }
 
 // ============================================
 // BACKUP Y RESTORE
 // ============================================
-function backupData() {
-    return Utils.safeExecute(() => {
-        const data = Storage.exportAll();
+async function backupData() {
+    try {
+        const data = await Api.exportAll();
         const json = JSON.stringify(data, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = window.URL.createObjectURL(blob);
@@ -1517,9 +1450,12 @@ function backupData() {
         a.download = `backup_${new Date().toISOString().split('T')[0]}.json`;
         a.click();
         window.URL.revokeObjectURL(url);
-        
+
         NotificationSystem.success('Backup creado correctamente');
-    }, 'Error al crear backup');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al crear backup');
+    }
 }
 
 function restoreData() {
@@ -1527,35 +1463,30 @@ function restoreData() {
     if (!fileInput) return;
 
     fileInput.click();
-    fileInput.onchange = (e) => {
+    fileInput.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
-            return Utils.safeExecute(() => {
-                try {
-                    const data = JSON.parse(event.target.result);
-                    const confirmed = confirm('¿Estás seguro de restaurar los datos? Esto sobrescribirá todos los datos actuales.');
-                    if (!confirmed) {
-                        fileInput.value = '';
-                        return;
-                    }
-
-                    if (Storage.importAll(data)) {
-                        NotificationSystem.success('Datos restaurados correctamente');
-                        // Recargar la aplicación
-                        setTimeout(() => {
-                            location.reload();
-                        }, 1000);
-                    } else {
-                        NotificationSystem.error('Error al restaurar los datos');
-                    }
-                } catch (error) {
-                    NotificationSystem.error('El archivo no es válido');
+        reader.onload = async (event) => {
+            try {
+                const data = JSON.parse(event.target.result);
+                const confirmed = confirm('¿Estás seguro de restaurar los datos? Esto sobrescribirá todos los datos actuales.');
+                if (!confirmed) {
+                    fileInput.value = '';
+                    return;
                 }
-                fileInput.value = '';
-            }, 'Error al restaurar datos');
+
+                await Api.importAll(data);
+                NotificationSystem.success('Datos restaurados correctamente');
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } catch (error) {
+                console.error(error);
+                NotificationSystem.error(error.message || 'Error al restaurar los datos');
+            }
+            fileInput.value = '';
         };
         reader.readAsText(file);
     };
@@ -1564,7 +1495,7 @@ function restoreData() {
 // ============================================
 // INICIALIZACIÓN Y EVENT LISTENERS
 // ============================================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     const username = sessionStorage.getItem('username');
     const password = sessionStorage.getItem('password');
 
@@ -1573,13 +1504,20 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    Storage.init();
     NotificationSystem.init();
     ConfirmSystem.init();
-    loadProjects();
-    loadUsers();
 
-    login();
+    try {
+        await Api.init();
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('No se pudo conectar con el servidor. ¿Está en marcha?');
+    }
+
+    await loadProjects();
+    await loadUsers();
+
+    await login();
 
     // Actualizar UI por si se recargó la página
     updateUIAfterLogin(username);
