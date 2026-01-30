@@ -1,7 +1,7 @@
 {
   "name": "evi-den-1-arcqui",
   "version": "1.0.0",
-  "description": "Sistema de gestión de tareas simplificado en JavaScript plano, HTML básico y CSS mínimo. Usa localStorage como base de datos, sin necesidad de servidor ni configuración.",
+  "description": "Backend para sistema de gestión de tareas con MongoDB y JWT.",
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

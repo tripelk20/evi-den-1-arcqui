@@ -106,6 +106,13 @@ const auth = (req, res, next) => {
   }
 };
 
+const requireAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Solo admin' });
+  }
+  next();
+};
+
 // ────────────────────────────────────────────────
 // Rutas de ejemplo (solo auth y tasks por ahora)
 // Puedes copiar el patrón para las demás
@@ -126,6 +133,79 @@ app.post('/api/login', async (req, res) => {
   );
 
   res.json({ token, user: { username: user.username, role: user.role } });
+});
+
+// Inicializar admin por defecto (si no existe)
+app.get('/api/init', async (req, res) => {
+  const admin = await User.findOne({ username: 'admin' });
+  if (!admin) {
+    const hashed = await bcrypt.hash('admin', 10);
+    await User.create({ username: 'admin', password: hashed, role: 'admin' });
+    return res.json({ message: 'Admin creado' });
+  }
+  res.json({ message: 'Admin ya existe' });
+});
+
+// Usuarios (admin registra / lista)
+app.get('/api/users', auth, async (req, res) => {
+  const users = await User.find({}, { username: 1, role: 1 }).sort({ username: 1 });
+  res.json(users);
+});
+
+app.post('/api/users', auth, requireAdmin, async (req, res) => {
+  try {
+    const { username, password, role = 'user' } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Usuario y contraseña requeridos' });
+    }
+    const existing = await User.findOne({ username });
+    if (existing) return res.status(400).json({ error: 'Usuario ya existe' });
+    const hashed = await bcrypt.hash(password, 10);
+    const user = new User({ username, password: hashed, role });
+    await user.save();
+    res.status(201).json({ username: user.username, role: user.role });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Proyectos
+app.get('/api/projects', auth, async (req, res) => {
+  const projects = await Project.find({ createdBy: req.user.username }).sort({ createdAt: -1 });
+  res.json(projects);
+});
+
+app.post('/api/projects', auth, async (req, res) => {
+  try {
+    const project = new Project({
+      ...req.body,
+      createdBy: req.user.username
+    });
+    await project.save();
+    res.status(201).json(project);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put('/api/projects/:id', auth, async (req, res) => {
+  try {
+    const project = await Project.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user.username },
+      req.body,
+      { new: true, runValidators: true }
+    );
+    if (!project) return res.status(404).json({ error: 'Proyecto no encontrado o no autorizado' });
+    res.json(project);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete('/api/projects/:id', auth, async (req, res) => {
+  const project = await Project.findOneAndDelete({ _id: req.params.id, createdBy: req.user.username });
+  if (!project) return res.status(404).json({ error: 'No encontrado o no autorizado' });
+  res.json({ message: 'Eliminado' });
 });
 
 // Crear tarea (ejemplo completo)
@@ -168,6 +248,77 @@ app.delete('/api/tasks/:id', auth, async (req, res) => {
   const task = await Task.findOneAndDelete({ _id: req.params.id, createdBy: req.user.username });
   if (!task) return res.status(404).json({ error: 'No encontrada o no autorizada' });
   res.json({ message: 'Eliminada' });
+});
+
+// Comentarios
+app.get('/api/comments', auth, async (req, res) => {
+  const taskId = req.query.taskId;
+  const query = taskId ? { taskId } : { user: req.user.username };
+  const comments = await Comment.find(query).sort({ createdAt: -1 });
+  res.json(comments);
+});
+
+app.post('/api/comments', auth, async (req, res) => {
+  try {
+    const { taskId, content } = req.body;
+    const comment = new Comment({
+      taskId,
+      content,
+      user: req.user.username
+    });
+    await comment.save();
+    res.status(201).json(comment);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Historial
+app.get('/api/history', auth, async (req, res) => {
+  const taskId = req.query.taskId;
+  const query = taskId ? { taskId } : { user: req.user.username };
+  const history = await History.find(query).sort({ createdAt: -1 });
+  res.json(history);
+});
+
+app.post('/api/history', auth, async (req, res) => {
+  try {
+    const { taskId, action, field, oldValue, newValue } = req.body;
+    const entry = new History({
+      taskId,
+      action,
+      field,
+      oldValue,
+      newValue,
+      user: req.user.username
+    });
+    await entry.save();
+    res.status(201).json(entry);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Notificaciones
+app.get('/api/notifications', auth, async (req, res) => {
+  const notifications = await Notification.find({ user: req.user.username }).sort({ createdAt: -1 });
+  res.json(notifications);
+});
+
+app.post('/api/notifications', auth, async (req, res) => {
+  try {
+    const { user, message, type = 'info', link } = req.body;
+    const notif = new Notification({ user, message, type, link });
+    await notif.save();
+    res.status(201).json(notif);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.patch('/api/notifications/read-all', auth, async (req, res) => {
+  await Notification.updateMany({ user: req.user.username }, { $set: { read: true } });
+  res.json({ message: 'Notificaciones marcadas' });
 });
 
 // ────────────────────────────────────────────────

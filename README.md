@@ -1,12 +1,12 @@
 # Task Manager Simple - Versión JavaScript
 
-Sistema de gestión de tareas simplificado en JavaScript plano, HTML básico y CSS mínimo. Usa localStorage como base de datos, sin necesidad de servidor ni configuración.
+Sistema de gestión de tareas en JavaScript/HTML/CSS con backend en Node.js y MongoDB.
 
 ## Características
 
 - **Sin dependencias**: Solo HTML, CSS y JavaScript puro
-- **Sin servidor**: Funciona completamente en el navegador
-- **Almacenamiento local**: Usa localStorage del navegador
+- **Con servidor**: Backend en Node.js (JWT)
+- **Almacenamiento**: MongoDB (colecciones users, projects, tasks, comments, history, notifications)
 - **Apariencia antigua**: Diseño minimalista estilo legacy
 - **Funcionalidades completas**: Todas las características del sistema original
 
@@ -36,7 +36,7 @@ Sistema de gestión de tareas simplificado en JavaScript plano, HTML básico y C
 TaskManagerSimple/
 ├── index.html    # Interfaz HTML básica
 ├── style.css     # Estilos CSS mínimos (apariencia antigua)
-├── app.js        # Lógica JavaScript con localStorage
+├── app.js        # Lógica JavaScript con API a MongoDB
 └── README.md     # Este archivo
 ```
 
@@ -48,7 +48,5 @@ El sistema se inicializa con:
 
 ## Notas
 
-- Todos los datos se guardan en localStorage del navegador
-- Los datos persisten entre sesiones
-- Para limpiar los datos, usa la consola del navegador: `localStorage.clear()`
+- Los datos se guardan en MongoDB (colecciones: users, projects, tasks, comments, history, notifications)
 - Compatible con cualquier navegador moderno (Chrome, Firefox, Safari, Edge)

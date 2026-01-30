@@ -112,7 +112,9 @@
             success(message) { this.show(message, 'success'); }
         };
 
-        function login() {
+        const API_BASE_URL = 'http://localhost:3000/api';
+
+        async function login() {
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
 
@@ -121,12 +123,26 @@
                 return;
             }
 
-            // Guardar credenciales en sessionStorage
-            sessionStorage.setItem('username', username);
-            sessionStorage.setItem('password', password);
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    NotificationSystem.error(data.error || 'Credenciales inválidas');
+                    return;
+                }
 
-            // Redirigir a la página principal
-            window.location.href = 'index.html';
+                const token = encodeURIComponent(data.token || '');
+                const user = encodeURIComponent(data.user?.username || '');
+                const role = encodeURIComponent(data.user?.role || 'user');
+                window.location.href = `index.html#token=${token}&user=${user}&role=${role}`;
+            } catch (err) {
+                console.error(err);
+                NotificationSystem.error('Error al conectar con el servidor');
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {

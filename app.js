@@ -234,8 +234,18 @@ const ConfirmSystem = {
 // API (comunicación con servidor / MongoDB)
 // ============================================
 const Api = {
+    token: null,
+
+    setToken(token) {
+        this.token = token;
+    },
+
     async request(method, path, body = null) {
-        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        const headers = { 'Content-Type': 'application/json' };
+        if (this.token) {
+            headers.Authorization = `Bearer ${this.token}`;
+        }
+        const opts = { method, headers };
         if (body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
             opts.body = JSON.stringify(body);
         }
@@ -251,10 +261,6 @@ const Api = {
         return data;
     },
 
-    async init() {
-        await this.request('GET', '/init');
-    },
-
     async getUsers() {
         const list = await this.request('GET', '/users');
         return Array.isArray(list) ? list : [];
@@ -267,7 +273,7 @@ const Api = {
 
     async addProject(project) {
         const res = await this.request('POST', '/projects', { name: project.name, description: project.description });
-        return res && res.id != null ? res.id : null;
+        return res && res._id ? res._id : null;
     },
 
     async updateProject(id, project) {
@@ -287,7 +293,7 @@ const Api = {
 
     async addTask(task) {
         const res = await this.request('POST', '/tasks', task);
-        return res && res.id != null ? res.id : null;
+        return res && res._id ? res._id : null;
     },
 
     async updateTask(id, task) {
@@ -320,9 +326,8 @@ const Api = {
         await this.request('POST', '/history', entry);
     },
 
-    async getNotifications(userId = null) {
-        const path = userId != null ? '/notifications?userId=' + userId : '/notifications';
-        const list = await this.request('GET', path);
+    async getNotifications() {
+        const list = await this.request('GET', '/notifications');
         return Array.isArray(list) ? list : [];
     },
 
@@ -330,8 +335,8 @@ const Api = {
         await this.request('POST', '/notifications', notification);
     },
 
-    async markNotificationsRead(userId) {
-        await this.request('PATCH', '/notifications/read', { userId });
+    async markNotificationsRead() {
+        await this.request('PATCH', '/notifications/read-all');
     },
 
     async exportAll() {
@@ -391,7 +396,7 @@ const Validation = {
 // ============================================
 // FUNCIONES DE LOGIN/LOGOUT
 // ============================================
-function updateUIAfterLogin(username) {
+function updateUIAfterLogin(username, role = null) {
     const profileDropdown = document.getElementById('profileDropdown');
     const currentUserSpan = document.getElementById('currentUser');
     const registerItem = document.getElementById('registerUserItem');
@@ -408,53 +413,40 @@ function updateUIAfterLogin(username) {
         currentUserSpan.textContent = username;
     }
 
-    isAdmin = (username.toLowerCase() === 'admin');
+    isAdmin = role ? role === 'admin' : (username.toLowerCase() === 'admin');
     if (registerItem) {
         registerItem.style.display = isAdmin ? 'block' : 'none';
     }
 }
 
 async function login() {
-    const username = sessionStorage.getItem('username');
-    const password = sessionStorage.getItem('password');
+    const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
+    const params = new URLSearchParams(hash);
+    const token = params.get('token');
+    const username = params.get('user');
+    const role = params.get('role') || 'user';
 
-    if (!username || !password) {
+    if (!token || !username) {
         window.location.href = 'login.html';
-        return;
+        return false;
     }
 
-    try {
-        const data = await Api.request('POST', '/login', { username, password });
-        const user = data && data.user ? data.user : null;
-        if (user) {
-            AppState.currentUser = { id: user.id, username: user.username };
-            sessionStorage.setItem('userId', String(user.id));
-            updateUIAfterLogin(user.username);
-            await loadTasks();
-            await updateStats();
-            NotificationSystem.success(`Bienvenido, ${user.username}`);
-        } else {
-            sessionStorage.removeItem('username');
-            sessionStorage.removeItem('password');
-            sessionStorage.removeItem('userId');
-            window.location.href = 'login.html';
-        }
-    } catch (err) {
-        sessionStorage.removeItem('username');
-        sessionStorage.removeItem('password');
-        sessionStorage.removeItem('userId');
-        NotificationSystem.error(err.data && err.data.error ? err.data.error : 'Error al iniciar sesión');
-        window.location.href = 'login.html';
-    }
+    Api.setToken(token);
+    AppState.currentUser = { username, role };
+    updateUIAfterLogin(username, role);
+    window.history.replaceState({}, document.title, window.location.pathname);
+
+    await loadTasks();
+    await updateStats();
+    NotificationSystem.success(`Bienvenido, ${username}`);
+    return true;
 }
 
 function logout() {
     AppState.currentUser = null;
     AppState.selectedTaskId = null;
     AppState.selectedProjectId = null;
-    sessionStorage.removeItem('username');
-    sessionStorage.removeItem('password');
-    sessionStorage.removeItem('userId');
+    Api.setToken(null);
     clearTaskForm();
     NotificationSystem.success('Sesión cerrada');
     setTimeout(() => {
@@ -483,7 +475,7 @@ async function registerNewUser() {
     }
 
     try {
-        await Api.request('POST', '/users', { username: newUsername, password: newPassword });
+        await Api.request('POST', '/users', { username: newUsername, password: newPassword, role: 'user' });
         NotificationSystem.success(`Usuario ${newUsername} registrado exitosamente`);
         const modal = bootstrap.Modal.getInstance(document.getElementById('registerUserModal'));
         if (modal) modal.hide();
@@ -541,10 +533,10 @@ async function loadUsers() {
         const select = document.getElementById('taskAssigned');
         if (!select) return;
 
-        select.innerHTML = '<option value="0">Sin asignar</option>';
+        select.innerHTML = '<option value="">Sin asignar</option>';
         users.forEach(user => {
             const option = document.createElement('option');
-            option.value = user.id;
+            option.value = user.username;
             option.textContent = Utils.escapeHtml(user.username);
             select.appendChild(option);
         });
@@ -564,20 +556,20 @@ async function loadProjects() {
             select.innerHTML = '';
             projects.forEach(project => {
                 const option = document.createElement('option');
-                option.value = project.id;
+                option.value = project._id;
                 option.textContent = Utils.escapeHtml(project.name);
                 select.appendChild(option);
             });
         }
 
         if (searchSelect) {
-            searchSelect.innerHTML = '<option value="0">Todos</option>';
-            projects.forEach(project => {
-                const option = document.createElement('option');
-                option.value = project.id;
-                option.textContent = Utils.escapeHtml(project.name);
-                searchSelect.appendChild(option);
-            });
+        searchSelect.innerHTML = '<option value="">Todos</option>';
+        projects.forEach(project => {
+            const option = document.createElement('option');
+            option.value = project._id;
+            option.textContent = Utils.escapeHtml(project.name);
+            searchSelect.appendChild(option);
+        });
         }
     } catch (err) {
         console.error(err);
@@ -600,12 +592,11 @@ async function addTask() {
         description: Utils.sanitize(document.getElementById('taskDescription').value.trim()),
         status: document.getElementById('taskStatus').value || 'Pendiente',
         priority: document.getElementById('taskPriority').value || 'Media',
-        projectId: parseInt(document.getElementById('taskProject').value) || 0,
-        assignedTo: parseInt(document.getElementById('taskAssigned').value) || 0,
+        projectId: document.getElementById('taskProject').value || null,
+        assignedTo: document.getElementById('taskAssigned').value || '',
         dueDate: document.getElementById('taskDueDate').value || '',
         estimatedHours: parseFloat(document.getElementById('taskHours').value) || 0,
-        actualHours: 0,
-        createdBy: AppState.currentUser.id
+        actualHours: 0
     };
 
     const errors = Validation.validateTask(task);
@@ -623,15 +614,15 @@ async function addTask() {
 
         await Api.addHistory({
             taskId: taskId,
-            userId: AppState.currentUser.id,
             action: 'CREATED',
+            field: 'title',
             oldValue: '',
             newValue: task.title
         });
 
-        if (task.assignedTo > 0) {
+        if (task.assignedTo) {
             await Api.addNotification({
-                userId: task.assignedTo,
+                user: task.assignedTo,
                 message: 'Nueva tarea asignada: ' + task.title,
                 type: 'task_assigned'
             });
@@ -655,7 +646,7 @@ async function updateTask() {
 
     try {
         const tasks = await Api.getTasks();
-        const oldTask = tasks.find(t => t.id === AppState.selectedTaskId);
+        const oldTask = tasks.find(t => t._id === AppState.selectedTaskId);
         if (!oldTask) {
             NotificationSystem.error('Tarea no encontrada');
             return;
@@ -667,12 +658,11 @@ async function updateTask() {
             description: Utils.sanitize(document.getElementById('taskDescription').value.trim()),
             status: document.getElementById('taskStatus').value || 'Pendiente',
             priority: document.getElementById('taskPriority').value || 'Media',
-            projectId: parseInt(document.getElementById('taskProject').value) || 0,
-            assignedTo: parseInt(document.getElementById('taskAssigned').value) || 0,
+            projectId: document.getElementById('taskProject').value || null,
+            assignedTo: document.getElementById('taskAssigned').value || '',
             dueDate: document.getElementById('taskDueDate').value || '',
             estimatedHours: parseFloat(document.getElementById('taskHours').value) || 0,
             actualHours: oldTask.actualHours || 0,
-            createdBy: oldTask.createdBy,
             createdAt: oldTask.createdAt
         };
 
@@ -685,8 +675,8 @@ async function updateTask() {
         if (oldTask.status !== task.status) {
             await Api.addHistory({
                 taskId: AppState.selectedTaskId,
-                userId: AppState.currentUser.id,
                 action: 'STATUS_CHANGED',
+                field: 'status',
                 oldValue: oldTask.status,
                 newValue: task.status
             });
@@ -695,8 +685,8 @@ async function updateTask() {
         if (oldTask.title !== task.title) {
             await Api.addHistory({
                 taskId: AppState.selectedTaskId,
-                userId: AppState.currentUser.id,
                 action: 'TITLE_CHANGED',
+                field: 'title',
                 oldValue: oldTask.title,
                 newValue: task.title
             });
@@ -704,9 +694,9 @@ async function updateTask() {
 
         await Api.updateTask(AppState.selectedTaskId, task);
 
-        if (task.assignedTo > 0) {
+        if (task.assignedTo) {
             await Api.addNotification({
-                userId: task.assignedTo,
+                user: task.assignedTo,
                 message: 'Tarea actualizada: ' + task.title,
                 type: 'task_updated'
             });
@@ -730,7 +720,7 @@ async function deleteTask() {
 
     try {
         const tasks = await Api.getTasks();
-        const task = tasks.find(t => t.id === AppState.selectedTaskId);
+        const task = tasks.find(t => t._id === AppState.selectedTaskId);
         if (!task) {
             NotificationSystem.error('Tarea no encontrada');
             return;
@@ -743,8 +733,8 @@ async function deleteTask() {
 
         await Api.addHistory({
             taskId: AppState.selectedTaskId,
-            userId: AppState.currentUser.id,
             action: 'DELETED',
+            field: 'title',
             oldValue: task.title,
             newValue: ''
         });
@@ -789,8 +779,9 @@ async function loadTasks() {
                 if (aVal == null) aVal = '';
                 if (bVal == null) bVal = '';
 
-                if (AppState.sortColumn === 'id') {
-                    return AppState.sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                if (AppState.sortColumn === '_id') {
+                    const comparison = String(aVal).localeCompare(String(bVal), 'es', { numeric: true });
+                    return AppState.sortDirection === 'asc' ? comparison : -comparison;
                 }
 
                 const comparison = String(aVal).localeCompare(String(bVal), 'es', { numeric: true });
@@ -804,29 +795,29 @@ async function loadTasks() {
             const row = document.createElement('tr');
             row.setAttribute('role', 'button');
             row.setAttribute('tabindex', '0');
-            row.setAttribute('aria-label', `Seleccionar tarea ${task.id}: ${task.title}`);
+            row.setAttribute('aria-label', `Seleccionar tarea ${task._id}: ${task.title}`);
 
-            row.addEventListener('click', () => selectTask(task.id));
+            row.addEventListener('click', () => selectTask(task._id));
             row.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
-                    selectTask(task.id);
+                    selectTask(task._id);
                 }
             });
 
-            const project = projects.find(p => p.id === task.projectId);
-            const user = users.find(u => u.id === task.assignedTo);
+            const project = projects.find(p => p._id === task.projectId);
+            const user = users.find(u => u.username === task.assignedTo);
 
             const statusClass = `status-${(task.status || 'Pendiente').toLowerCase().replace(/\s+/g, '-')}`;
             const priorityClass = `priority-${(task.priority || 'Media').toLowerCase()}`;
 
             row.innerHTML = `
-            <td>${task.id}</td>
+            <td>${task._id}</td>
             <td>${Utils.escapeHtml(task.title)}</td>
             <td><span class="status-badge ${statusClass}">${Utils.escapeHtml(task.status || 'Pendiente')}</span></td>
             <td><span class="priority-badge ${priorityClass}">${Utils.escapeHtml(task.priority || 'Media')}</span></td>
             <td>${Utils.escapeHtml(project ? project.name : 'Sin proyecto')}</td>
-            <td>${Utils.escapeHtml(user ? user.username : 'Sin asignar')}</td>
+            <td>${Utils.escapeHtml(user ? user.username : (task.assignedTo || 'Sin asignar'))}</td>
             <td>${Utils.formatDate(task.dueDate)}</td>
         `;
 
@@ -892,7 +883,7 @@ async function selectTask(id) {
     AppState.selectedTaskId = id;
     try {
         const tasks = await Api.getTasks();
-        const task = tasks.find(t => t.id === id);
+        const task = tasks.find(t => t._id === id);
         if (!task) return;
 
     document.getElementById('taskTitle').value = task.title || '';
@@ -916,7 +907,7 @@ async function selectTask(id) {
 
     const projectSelect = document.getElementById('taskProject');
     for (let i = 0; i < projectSelect.options.length; i++) {
-        if (parseInt(projectSelect.options[i].value) === task.projectId) {
+        if (projectSelect.options[i].value === task.projectId) {
             projectSelect.selectedIndex = i;
             break;
         }
@@ -924,7 +915,7 @@ async function selectTask(id) {
 
     const assignedSelect = document.getElementById('taskAssigned');
     for (let i = 0; i < assignedSelect.options.length; i++) {
-        if (parseInt(assignedSelect.options[i].value) === task.assignedTo) {
+        if (assignedSelect.options[i].value === task.assignedTo) {
             assignedSelect.selectedIndex = i;
             break;
         }
@@ -1019,7 +1010,7 @@ async function updateProject() {
     try {
         const name = Utils.sanitize(document.getElementById('projectName').value.trim());
         const projects = await Api.getProjects();
-        const project = projects.find(p => p.id === AppState.selectedProjectId);
+        const project = projects.find(p => p._id === AppState.selectedProjectId);
         if (!project) {
             NotificationSystem.error('Proyecto no encontrado');
             return;
@@ -1055,7 +1046,7 @@ async function deleteProject() {
 
     try {
         const projects = await Api.getProjects();
-        const project = projects.find(p => p.id === AppState.selectedProjectId);
+        const project = projects.find(p => p._id === AppState.selectedProjectId);
         if (!project) {
             NotificationSystem.error('Proyecto no encontrado');
             return;
@@ -1093,10 +1084,10 @@ async function loadProjectsTable() {
             const row = document.createElement('tr');
             row.setAttribute('role', 'button');
             row.setAttribute('tabindex', '0');
-            row.setAttribute('aria-label', `Seleccionar proyecto ${project.id}: ${project.name}`);
+            row.setAttribute('aria-label', `Seleccionar proyecto ${project._id}: ${project.name}`);
 
             row.addEventListener('click', () => {
-                AppState.selectedProjectId = project.id;
+                AppState.selectedProjectId = project._id;
                 document.getElementById('projectName').value = project.name;
                 document.getElementById('projectDescription').value = project.description || '';
             });
@@ -1109,7 +1100,7 @@ async function loadProjectsTable() {
             });
 
             row.innerHTML = `
-                <td>${project.id}</td>
+                <td>${project._id}</td>
                 <td>${Utils.escapeHtml(project.name)}</td>
                 <td>${Utils.escapeHtml(project.description || '')}</td>
             `;
@@ -1131,7 +1122,7 @@ async function addComment() {
         return;
     }
 
-    const taskId = parseInt(document.getElementById('commentTaskId').value);
+    const taskId = document.getElementById('commentTaskId').value.trim();
     const text = Utils.sanitize(document.getElementById('commentText').value.trim());
 
     if (!taskId) {
@@ -1147,8 +1138,7 @@ async function addComment() {
     try {
         await Api.addComment({
             taskId: taskId,
-            userId: AppState.currentUser.id,
-            commentText: text
+            content: text
         });
 
         document.getElementById('commentText').value = '';
@@ -1162,7 +1152,7 @@ async function addComment() {
 
 async function loadComments() {
     try {
-        const taskId = parseInt(document.getElementById('commentTaskId').value);
+        const taskId = document.getElementById('commentTaskId').value.trim();
         const commentsArea = document.getElementById('commentsArea');
         if (!commentsArea) return;
 
@@ -1171,7 +1161,7 @@ async function loadComments() {
             return;
         }
 
-        const [comments, users] = await Promise.all([Api.getComments(taskId), Api.getUsers()]);
+        const comments = await Api.getComments(taskId);
 
         let text = `=== COMENTARIOS TAREA #${taskId} ===\n\n`;
 
@@ -1179,9 +1169,8 @@ async function loadComments() {
             text += 'No hay comentarios\n';
         } else {
             comments.forEach(comment => {
-                const user = users.find(u => u.id === comment.userId);
                 const date = new Date(comment.createdAt).toLocaleString('es-ES');
-                text += `[${date}] ${user ? user.username : 'Usuario'}: ${comment.commentText}\n---\n`;
+                text += `[${date}] ${comment.user || 'Usuario'}: ${comment.content}\n---\n`;
             });
         }
 
@@ -1197,7 +1186,7 @@ async function loadComments() {
 // ============================================
 async function loadHistory() {
     try {
-        const taskId = parseInt(document.getElementById('historyTaskId').value);
+        const taskId = document.getElementById('historyTaskId').value.trim();
         const historyArea = document.getElementById('historyArea');
         if (!historyArea) return;
 
@@ -1206,7 +1195,7 @@ async function loadHistory() {
             return;
         }
 
-        const [history, users] = await Promise.all([Api.getHistory(taskId), Api.getUsers()]);
+        const history = await Api.getHistory(taskId);
 
         let text = `=== HISTORIAL TAREA #${taskId} ===\n\n`;
 
@@ -1214,10 +1203,9 @@ async function loadHistory() {
             text += 'No hay historial\n';
         } else {
             history.forEach(entry => {
-                const user = users.find(u => u.id === entry.userId);
-                const date = new Date(entry.timestamp).toLocaleString('es-ES');
+                const date = new Date(entry.createdAt).toLocaleString('es-ES');
                 text += `${date} - ${entry.action}\n`;
-                text += `  Usuario: ${user ? user.username : 'Desconocido'}\n`;
+                text += `  Usuario: ${entry.user || 'Desconocido'}\n`;
                 text += `  Antes: ${entry.oldValue || '(vacío)'}\n`;
                 text += `  Después: ${entry.newValue || '(vacío)'}\n---\n`;
             });
@@ -1232,7 +1220,7 @@ async function loadHistory() {
 
 async function loadAllHistory() {
     try {
-        const [history, users] = await Promise.all([Api.getHistory(), Api.getUsers()]);
+        const history = await Api.getHistory();
         const historyArea = document.getElementById('historyArea');
         if (!historyArea) return;
 
@@ -1242,10 +1230,9 @@ async function loadAllHistory() {
             text += 'No hay historial\n';
         } else {
             history.slice(-100).reverse().forEach(entry => {
-                const user = users.find(u => u.id === entry.userId);
-                const date = new Date(entry.timestamp).toLocaleString('es-ES');
+                const date = new Date(entry.createdAt).toLocaleString('es-ES');
                 text += `Tarea #${entry.taskId} - ${entry.action} - ${date}\n`;
-                text += `  Usuario: ${user ? user.username : 'Desconocido'}\n`;
+                text += `  Usuario: ${entry.user || 'Desconocido'}\n`;
                 text += `  Antes: ${entry.oldValue || '(vacío)'}\n`;
                 text += `  Después: ${entry.newValue || '(vacío)'}\n---\n`;
             });
@@ -1265,7 +1252,7 @@ async function loadNotifications() {
     if (!AppState.currentUser) return;
 
     try {
-        const notifications = await Api.getNotifications(AppState.currentUser.id);
+        const notifications = await Api.getNotifications();
         const unread = notifications.filter(n => !n.read);
         const notificationsArea = document.getElementById('notificationsArea');
         if (!notificationsArea) return;
@@ -1292,7 +1279,7 @@ async function markNotificationsRead() {
     if (!AppState.currentUser) return;
 
     try {
-        await Api.markNotificationsRead(AppState.currentUser.id);
+        await Api.markNotificationsRead();
         await loadNotifications();
         NotificationSystem.success('Notificaciones marcadas como leídas');
     } catch (err) {
@@ -1313,7 +1300,7 @@ async function searchTasks() {
         const searchText = document.getElementById('searchText').value.toLowerCase().trim();
         const statusFilter = document.getElementById('searchStatus').value;
         const priorityFilter = document.getElementById('searchPriority').value;
-        const projectFilter = parseInt(document.getElementById('searchProject').value) || 0;
+        const projectFilter = document.getElementById('searchProject').value || '';
 
         const [tasks, projects] = await Promise.all([Api.getTasks(), Api.getProjects()]);
         const tbody = document.getElementById('searchTableBody');
@@ -1333,7 +1320,7 @@ async function searchTasks() {
             if (priorityFilter && task.priority !== priorityFilter) {
                 return false;
             }
-            if (projectFilter > 0 && task.projectId !== projectFilter) {
+            if (projectFilter && task.projectId !== projectFilter) {
                 return false;
             }
             return true;
@@ -1348,10 +1335,10 @@ async function searchTasks() {
 
         filtered.forEach(task => {
             const row = document.createElement('tr');
-            const project = projects.find(p => p.id === task.projectId);
+            const project = projects.find(p => p._id === task.projectId);
 
             row.innerHTML = `
-                <td>${task.id}</td>
+                <td>${task._id}</td>
                 <td>${Utils.escapeHtml(task.title)}</td>
                 <td>${Utils.escapeHtml(task.status || 'Pendiente')}</td>
                 <td>${Utils.escapeHtml(task.priority || 'Media')}</td>
@@ -1388,12 +1375,12 @@ async function generateReport(type) {
             });
         } else if (type === 'projects') {
             projects.forEach(project => {
-                const count = tasks.filter(t => t.projectId === project.id).length;
+                const count = tasks.filter(t => t.projectId === project._id).length;
                 text += `${project.name}: ${count} tareas\n`;
             });
         } else if (type === 'users') {
             users.forEach(user => {
-                const count = tasks.filter(t => t.assignedTo === user.id).length;
+                const count = tasks.filter(t => t.assignedTo === user.username).length;
                 text += `${user.username}: ${count} tareas asignadas\n`;
             });
         }
@@ -1413,12 +1400,12 @@ async function exportCSV() {
         let csv = 'ID,Título,Estado,Prioridad,Proyecto\n';
 
         tasks.forEach(task => {
-            const project = projects.find(p => p.id === task.projectId);
+            const project = projects.find(p => p._id === task.projectId);
             const title = (task.title || '').replace(/"/g, '""');
             const status = (task.status || 'Pendiente').replace(/"/g, '""');
             const priority = (task.priority || 'Media').replace(/"/g, '""');
             const projectName = (project ? project.name : 'Sin proyecto').replace(/"/g, '""');
-            csv += `${task.id},"${title}","${status}","${priority}","${projectName}"\n`;
+            csv += `${task._id},"${title}","${status}","${priority}","${projectName}"\n`;
         });
 
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1440,87 +1427,31 @@ async function exportCSV() {
 // BACKUP Y RESTORE
 // ============================================
 async function backupData() {
-    try {
-        const data = await Api.exportAll();
-        const json = JSON.stringify(data, null, 2);
-        const blob = new Blob([json], { type: 'application/json' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `backup_${new Date().toISOString().split('T')[0]}.json`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-
-        NotificationSystem.success('Backup creado correctamente');
-    } catch (err) {
-        console.error(err);
-        NotificationSystem.error('Error al crear backup');
-    }
+    NotificationSystem.info('Backup no disponible en este backend');
 }
 
 function restoreData() {
-    const fileInput = document.getElementById('restoreFile');
-    if (!fileInput) return;
-
-    fileInput.click();
-    fileInput.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-            try {
-                const data = JSON.parse(event.target.result);
-                const confirmed = confirm('¿Estás seguro de restaurar los datos? Esto sobrescribirá todos los datos actuales.');
-                if (!confirmed) {
-                    fileInput.value = '';
-                    return;
-                }
-
-                await Api.importAll(data);
-                NotificationSystem.success('Datos restaurados correctamente');
-                setTimeout(() => {
-                    location.reload();
-                }, 1000);
-            } catch (error) {
-                console.error(error);
-                NotificationSystem.error(error.message || 'Error al restaurar los datos');
-            }
-            fileInput.value = '';
-        };
-        reader.readAsText(file);
-    };
+    NotificationSystem.info('Restore no disponible en este backend');
 }
 
 // ============================================
 // INICIALIZACIÓN Y EVENT LISTENERS
 // ============================================
 document.addEventListener('DOMContentLoaded', async () => {
-    const username = sessionStorage.getItem('username');
-    const password = sessionStorage.getItem('password');
-
-    if (!username || !password) {
-        window.location.href = 'login.html';
-        return;
-    }
-
     NotificationSystem.init();
     ConfirmSystem.init();
 
     try {
-        await Api.init();
+        await Api.request('GET', '/init');
     } catch (err) {
         console.error(err);
-        NotificationSystem.error('No se pudo conectar con el servidor. ¿Está en marcha?');
     }
+
+    const loggedIn = await login();
+    if (!loggedIn) return;
 
     await loadProjects();
     await loadUsers();
-
-    await login();
-
-    // Actualizar UI por si se recargó la página
-    updateUIAfterLogin(username);
 
     // Menú de perfil: Mi Perfil y Cambiar Contraseña (placeholders)
     const profileLink = document.getElementById('profileLink');

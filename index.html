@@ -188,7 +188,7 @@
                                     <table class="table table-hover table-striped mb-0" id="tasksTable">
                                         <thead class="table-dark">
                                             <tr>
-                                                <th class="sortable" data-column="id">ID <i class="bi bi-arrow-down-up"></i></th>
+                                                <th class="sortable" data-column="_id">ID <i class="bi bi-arrow-down-up"></i></th>
                                                 <th class="sortable" data-column="title">Título <i class="bi bi-arrow-down-up"></i></th>
                                                 <th class="sortable" data-column="status">Estado <i class="bi bi-arrow-down-up"></i></th>
                                                 <th class="sortable" data-column="priority">Prioridad <i class="bi bi-arrow-down-up"></i></th>
@@ -278,7 +278,7 @@
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label for="commentTaskId" class="form-label">ID Tarea</label>
-                                <input type="number" class="form-control" id="commentTaskId">
+                                <input type="text" class="form-control" id="commentTaskId" placeholder="ID de tarea">
                             </div>
                             <div class="col-md-8 d-flex align-items-end gap-2">
                                 <button type="button" class="btn btn-primary" id="loadCommentsBtn">
@@ -312,7 +312,7 @@
                         <div class="row mb-3">
                             <div class="col-md-4">
                                 <label for="historyTaskId" class="form-label">ID Tarea</label>
-                                <input type="number" class="form-control" id="historyTaskId">
+                                <input type="text" class="form-control" id="historyTaskId" placeholder="ID de tarea">
                             </div>
                             <div class="col-md-8 d-flex align-items-end gap-2">
                                 <button type="button" class="btn btn-primary" id="loadHistoryBtn">
