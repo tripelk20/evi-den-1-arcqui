@@ -6,7 +6,7 @@ const CONFIG = {
     MAX_NOTIFICATION_DISPLAY: 5,
     NOTIFICATION_DURATION: 5000
 };
-
+let isAdmin = false;
 // ============================================
 // UTILIDADES
 // ============================================
@@ -502,14 +502,35 @@ const Validation = {
 // ============================================
 // FUNCIONES DE LOGIN/LOGOUT
 // ============================================
+function updateUIAfterLogin(username) {
+    const profileDropdown = document.getElementById('profileDropdown');
+    const currentUserSpan = document.getElementById('currentUser');
+    const registerItem = document.getElementById('registerUserItem');
+
+    if (profileDropdown) {
+        profileDropdown.style.display = 'block';
+        // Inicializar dropdown: el menú se abre al picar la foto/icono del perfil (profileMenu)
+        const profileMenu = document.getElementById('profileMenu');
+        if (profileMenu && typeof bootstrap !== 'undefined') {
+            new bootstrap.Dropdown(profileMenu);
+        }
+    }
+    if (currentUserSpan) {
+        currentUserSpan.textContent = username;
+    }
+
+    isAdmin = (username.toLowerCase() === 'admin');
+    if (registerItem) {
+        registerItem.style.display = isAdmin ? 'block' : 'none';
+    }
+}
+
 function login() {
     return Utils.safeExecute(() => {
-        // Obtener credenciales de sessionStorage (viene de login.html)
         const username = sessionStorage.getItem('username');
         const password = sessionStorage.getItem('password');
 
         if (!username || !password) {
-            // Si no hay credenciales, redirigir al login
             window.location.href = 'login.html';
             return;
         }
@@ -519,12 +540,11 @@ function login() {
 
         if (user) {
             AppState.currentUser = user;
-            document.getElementById('currentUser').textContent = Utils.escapeHtml(user.username);
+            updateUIAfterLogin(user.username);
             loadTasks();
             updateStats();
             NotificationSystem.success(`Bienvenido, ${user.username}`);
         } else {
-            // Credenciales inválidas, redirigir al login
             sessionStorage.removeItem('username');
             sessionStorage.removeItem('password');
             window.location.href = 'login.html';
@@ -539,11 +559,54 @@ function logout() {
     sessionStorage.removeItem('username');
     sessionStorage.removeItem('password');
     clearTaskForm();
-    NotificationSystem.info('Sesión cerrada');
-    // Redirigir al login después de un breve delay
+    NotificationSystem.success('Sesión cerrada');
     setTimeout(() => {
         window.location.href = 'login.html';
-    }, 1000);
+    }, 800);
+}
+
+function registerNewUser() {
+    if (!isAdmin) {
+        NotificationSystem.error('Solo el admin puede registrar usuarios');
+        return;
+    }
+
+    const newUsername = document.getElementById('newUsername').value.trim();
+    const newPassword = document.getElementById('newPassword').value;
+    const newPasswordConfirm = document.getElementById('newPasswordConfirm').value;
+
+    if (!newUsername || !newPassword || newPassword !== newPasswordConfirm) {
+        NotificationSystem.error('Datos inválidos o contraseñas no coinciden');
+        return;
+    }
+
+    if (newUsername.length < 3 || newPassword.length < 4) {
+        NotificationSystem.error('El nombre de usuario debe tener al menos 3 caracteres y la contraseña al menos 4');
+        return;
+    }
+
+    const users = Storage.getUsers();
+    if (users.find(u => u.username === newUsername)) {
+        NotificationSystem.error('El usuario ya existe');
+        return;
+    }
+
+    const newId = Math.max(...users.map(u => u.id), 0) + 1;
+    const newUser = { id: newId, username: newUsername, password: newPassword };
+    users.push(newUser);
+    if (Storage.setItem('users', users)) {
+        NotificationSystem.success(`Usuario ${newUsername} registrado exitosamente`);
+        const modal = bootstrap.Modal.getInstance(document.getElementById('registerUserModal'));
+        if (modal) modal.hide();
+
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('newPasswordConfirm').value = '';
+
+        loadUsers();
+    } else {
+        NotificationSystem.error('Error al registrar el usuario');
+    }
 }
 
 // ============================================
@@ -1502,33 +1565,46 @@ function restoreData() {
 // INICIALIZACIÓN Y EVENT LISTENERS
 // ============================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Verificar si hay sesión activa
     const username = sessionStorage.getItem('username');
     const password = sessionStorage.getItem('password');
-    
+
     if (!username || !password) {
-        // No hay sesión, redirigir al login
         window.location.href = 'login.html';
         return;
     }
 
-    // Inicializar sistemas
     Storage.init();
     NotificationSystem.init();
     ConfirmSystem.init();
     loadProjects();
     loadUsers();
-    
-    // Iniciar sesión automáticamente
+
     login();
 
-    // Event listeners para logout
+    // Actualizar UI por si se recargó la página
+    updateUIAfterLogin(username);
+
+    // Menú de perfil: Mi Perfil y Cambiar Contraseña (placeholders)
+    const profileLink = document.getElementById('profileLink');
+    const changePasswordLink = document.getElementById('changePasswordLink');
+    if (profileLink) {
+        profileLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            NotificationSystem.info('Función "Mi Perfil" aún no implementada');
+        });
+    }
+    if (changePasswordLink) {
+        changePasswordLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            NotificationSystem.info('Función "Cambiar Contraseña" aún no implementada');
+        });
+    }
+
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', logout);
     }
 
-    // Event listeners para pestañas
     document.querySelectorAll('.nav-link[data-tab]').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -1603,4 +1679,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (exportCSVBtn) exportCSVBtn.addEventListener('click', exportCSV);
     if (backupBtn) backupBtn.addEventListener('click', backupData);
     if (restoreBtn) restoreBtn.addEventListener('click', restoreData);
+
+    // Botón y modal de registro de usuario (admin)
+    const registerBtn = document.getElementById('registerUserBtn');
+    const saveNewUserBtn = document.getElementById('saveNewUserBtn');
+    if (registerBtn) {
+        registerBtn.addEventListener('click', () => {
+            const modal = new bootstrap.Modal(document.getElementById('registerUserModal'));
+            modal.show();
+        });
+    }
+    if (saveNewUserBtn) {
+        saveNewUserBtn.addEventListener('click', registerNewUser);
+    }
 });
