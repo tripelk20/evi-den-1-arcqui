@@ -553,23 +553,26 @@ async function loadProjects() {
         const searchSelect = document.getElementById('searchProject');
 
         if (select) {
-            select.innerHTML = '';
-            projects.forEach(project => {
-                const option = document.createElement('option');
-                option.value = project._id;
-                option.textContent = Utils.escapeHtml(project.name);
-                select.appendChild(option);
-            });
+            if (projects.length > 0) {
+                select.innerHTML = '';
+                projects.forEach(project => {
+                    const option = document.createElement('option');
+                    option.value = project.name;
+                    option.textContent = Utils.escapeHtml(project.name);
+                    select.appendChild(option);
+                });
+            }
+            // Si no hay proyectos en BD, se mantienen las opciones estáticas del HTML
         }
 
         if (searchSelect) {
-        searchSelect.innerHTML = '<option value="">Todos</option>';
-        projects.forEach(project => {
-            const option = document.createElement('option');
-            option.value = project._id;
-            option.textContent = Utils.escapeHtml(project.name);
-            searchSelect.appendChild(option);
-        });
+            searchSelect.innerHTML = '<option value="">Todos</option>';
+            projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.name;
+                option.textContent = Utils.escapeHtml(project.name);
+                searchSelect.appendChild(option);
+            });
         }
     } catch (err) {
         console.error(err);
@@ -805,7 +808,7 @@ async function loadTasks() {
                 }
             });
 
-            const project = projects.find(p => p._id === task.projectId);
+            const project = projects.find(p => p.name === task.projectId);
             const user = users.find(u => u.username === task.assignedTo);
 
             const statusClass = `status-${(task.status || 'Pendiente').toLowerCase().replace(/\s+/g, '-')}`;
@@ -1335,7 +1338,7 @@ async function searchTasks() {
 
         filtered.forEach(task => {
             const row = document.createElement('tr');
-            const project = projects.find(p => p._id === task.projectId);
+            const project = projects.find(p => p.name === task.projectId);
 
             row.innerHTML = `
                 <td>${task._id}</td>
@@ -1375,7 +1378,7 @@ async function generateReport(type) {
             });
         } else if (type === 'projects') {
             projects.forEach(project => {
-                const count = tasks.filter(t => t.projectId === project._id).length;
+                const count = tasks.filter(t => t.projectId === project.name).length;
                 text += `${project.name}: ${count} tareas\n`;
             });
         } else if (type === 'users') {
@@ -1400,7 +1403,7 @@ async function exportCSV() {
         let csv = 'ID,Título,Estado,Prioridad,Proyecto\n';
 
         tasks.forEach(task => {
-            const project = projects.find(p => p._id === task.projectId);
+            const project = projects.find(p => p.name === task.projectId);
             const title = (task.title || '').replace(/"/g, '""');
             const status = (task.status || 'Pendiente').replace(/"/g, '""');
             const priority = (task.priority || 'Media').replace(/"/g, '""');

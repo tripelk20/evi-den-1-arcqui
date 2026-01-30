@@ -53,7 +53,7 @@ const TaskSchema = new mongoose.Schema({
   description: String,
   status: { type: String, default: 'Pendiente' },
   priority: { type: String, default: 'Media' },
-  projectId: mongoose.Schema.Types.ObjectId,
+  projectId: String,
   assignedTo: String, // username por simplicidad
   dueDate: Date,
   createdBy: { type: String, required: true },
