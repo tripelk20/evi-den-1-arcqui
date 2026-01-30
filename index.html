@@ -521,5 +521,34 @@
         </div>
     </div>
 </div>
+
+    <!-- Modal de Perfil -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="profileModalLabel">Mi Perfil</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="profileName" class="form-label">Nombre de perfil</label>
+                        <input type="text" class="form-control" id="profileName" placeholder="Tu nombre visible">
+                    </div>
+                    <div class="mb-3">
+                        <label for="profilePhotoUrl" class="form-label">URL de foto</label>
+                        <input type="text" class="form-control" id="profilePhotoUrl" placeholder="https://...">
+                    </div>
+                    <div class="mb-3">
+                        <img id="profilePhotoPreview" class="profile-photo-preview is-hidden" alt="Vista previa de foto">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="saveProfileBtn">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

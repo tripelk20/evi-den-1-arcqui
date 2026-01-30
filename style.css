@@ -68,6 +68,14 @@ body.login-page .text-primary {
     color: var(--guinda) !important;
 }
 
+.profile-photo-preview {
+    width: 100%;
+    max-height: 180px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--border-teal);
+}
+
 /* Navbar - Guinda con dorado */
 .dark-navbar {
     background: linear-gradient(135deg, #2d5a6a, #3d7a8b, #2d7a6b) !important;

@@ -37,6 +37,9 @@ const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true, trim: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['admin', 'user'], default: 'user' },
+  permisos: { type: Boolean, default: false },
+  displayName: { type: String, trim: true },
+  photoUrl: { type: String, trim: true },
   createdAt: { type: Date, default: Date.now }
 });
 const User = mongoose.model('User', UserSchema, 'users');  // fuerza el nombre de la colección
@@ -143,7 +146,7 @@ const auth = (req, res, next) => {
 };
 
 const requireAdmin = (req, res, next) => {
-  if (!req.user || req.user.role !== 'admin') {
+  if (!req.user || !req.user.permisos) {
     return res.status(403).json({ error: 'Solo admin' });
   }
   next();
@@ -163,12 +166,58 @@ app.post('/api/login', async (req, res) => {
   }
 
   const token = jwt.sign(
-    { username: user.username, role: user.role },
+    { username: user.username, role: user.role, permisos: user.permisos === true },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
 
-  res.json({ token, user: { username: user.username, role: user.role } });
+  res.json({
+    token,
+    user: {
+      username: user.username,
+      role: user.role,
+      permisos: user.permisos === true,
+      displayName: user.displayName || '',
+      photoUrl: user.photoUrl || ''
+    }
+  });
+});
+
+// Perfil (ver / actualizar)
+app.get('/api/profile', auth, async (req, res) => {
+  const user = await User.findOne({ username: req.user.username }, { password: 0 });
+  if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+  res.json({
+    username: user.username,
+    permisos: user.permisos === true,
+    displayName: user.displayName || '',
+    photoUrl: user.photoUrl || ''
+  });
+});
+
+app.put('/api/profile', auth, async (req, res) => {
+  try {
+    const { displayName, photoUrl } = req.body || {};
+    const user = await User.findOneAndUpdate(
+      { username: req.user.username },
+      {
+        $set: {
+          displayName: (displayName || '').trim(),
+          photoUrl: (photoUrl || '').trim()
+        }
+      },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({
+      username: user.username,
+      permisos: user.permisos === true,
+      displayName: user.displayName || '',
+      photoUrl: user.photoUrl || ''
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // Inicializar admin por defecto (si no existe)
@@ -181,7 +230,7 @@ app.get('/api/init', async (req, res) => {
       { $inc: { seq: 1 } },
       { new: true, upsert: true }
     );
-    await User.create({ numero: counter.seq, username: 'admin', password: hashed, role: 'admin' });
+    await User.create({ numero: counter.seq, username: 'admin', password: hashed, role: 'admin', permisos: true });
     return res.json({ message: 'Admin creado' });
   }
   res.json({ message: 'Admin ya existe' });
@@ -207,7 +256,7 @@ app.post('/api/users', auth, requireAdmin, async (req, res) => {
       { new: true, upsert: true }
     );
     const hashed = await bcrypt.hash(password, 10);
-    const user = new User({ numero: counter.seq, username, password: hashed, role });
+    const user = new User({ numero: counter.seq, username, password: hashed, role, permisos: false });
     await user.save();
     res.status(201).json({ numero: user.numero, username: user.username, role: user.role });
   } catch (err) {

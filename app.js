@@ -266,6 +266,14 @@ const Api = {
         return Array.isArray(list) ? list : [];
     },
 
+    async getProfile() {
+        return await this.request('GET', '/profile');
+    },
+
+    async updateProfile(payload) {
+        return await this.request('PUT', '/profile', payload);
+    },
+
     async getProjects() {
         const list = await this.request('GET', '/projects');
         return Array.isArray(list) ? list : [];
@@ -396,7 +404,7 @@ const Validation = {
 // ============================================
 // FUNCIONES DE LOGIN/LOGOUT
 // ============================================
-function updateUIAfterLogin(username, role = null) {
+function updateUIAfterLogin(username, role = null, displayName = '', permisos = false) {
     const profileDropdown = document.getElementById('profileDropdown');
     const currentUserSpan = document.getElementById('currentUser');
     const registerItem = document.getElementById('registerUserItem');
@@ -410,10 +418,10 @@ function updateUIAfterLogin(username, role = null) {
         }
     }
     if (currentUserSpan) {
-        currentUserSpan.textContent = username;
+        currentUserSpan.textContent = displayName || username;
     }
 
-    isAdmin = role ? role === 'admin' : (username.toLowerCase() === 'admin');
+    isAdmin = permisos === true || role === 'admin';
     if (registerItem) {
         registerItem.classList.toggle('is-hidden', !isAdmin);
     }
@@ -425,6 +433,7 @@ async function login() {
     const token = params.get('token');
     const username = params.get('user');
     const role = params.get('role') || 'user';
+    const permisos = params.get('permisos') === 'true';
 
     if (!token || !username) {
         window.location.href = 'login.html';
@@ -432,12 +441,13 @@ async function login() {
     }
 
     Api.setToken(token);
-    AppState.currentUser = { username, role };
-    updateUIAfterLogin(username, role);
+    AppState.currentUser = { username, role, permisos };
+    updateUIAfterLogin(username, role, '', permisos);
     window.history.replaceState({}, document.title, window.location.pathname);
 
     await loadTasks();
     await updateStats();
+    await loadProfile();
     NotificationSystem.success(`Bienvenido, ${username}`);
     return true;
 }
@@ -577,6 +587,57 @@ async function loadProjects() {
     } catch (err) {
         console.error(err);
         NotificationSystem.error('Error al cargar proyectos');
+    }
+}
+
+async function loadProfile() {
+    try {
+        const profile = await Api.getProfile();
+        const nameInput = document.getElementById('profileName');
+        const photoInput = document.getElementById('profilePhotoUrl');
+        const photoPreview = document.getElementById('profilePhotoPreview');
+
+        if (nameInput) nameInput.value = profile.displayName || '';
+        if (photoInput) photoInput.value = profile.photoUrl || '';
+        if (photoPreview) {
+            photoPreview.src = profile.photoUrl || '';
+            photoPreview.classList.toggle('is-hidden', !profile.photoUrl);
+        }
+
+        updateUIAfterLogin(
+            profile.username,
+            AppState.currentUser ? AppState.currentUser.role : null,
+            profile.displayName || '',
+            profile.permisos === true
+        );
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function saveProfile() {
+    const nameInput = document.getElementById('profileName');
+    const photoInput = document.getElementById('profilePhotoUrl');
+    const displayName = nameInput ? nameInput.value.trim() : '';
+    const photoUrl = photoInput ? photoInput.value.trim() : '';
+
+    try {
+        const updated = await Api.updateProfile({ displayName, photoUrl });
+        const photoPreview = document.getElementById('profilePhotoPreview');
+        if (photoPreview) {
+            photoPreview.src = updated.photoUrl || '';
+            photoPreview.classList.toggle('is-hidden', !updated.photoUrl);
+        }
+        updateUIAfterLogin(
+            updated.username,
+            AppState.currentUser ? AppState.currentUser.role : null,
+            updated.displayName || '',
+            updated.permisos === true
+        );
+        NotificationSystem.success('Perfil actualizado');
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error(err.data && err.data.error ? err.data.error : 'Error al guardar perfil');
     }
 }
 
@@ -1462,9 +1523,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const profileLink = document.getElementById('profileLink');
     const changePasswordLink = document.getElementById('changePasswordLink');
     if (profileLink) {
-        profileLink.addEventListener('click', (e) => {
+        profileLink.addEventListener('click', async (e) => {
             e.preventDefault();
-            NotificationSystem.info('Función "Mi Perfil" aún no implementada');
+            await loadProfile();
+            const modalEl = document.getElementById('profileModal');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const modal = new bootstrap.Modal(modalEl);
+                modal.show();
+            }
         });
     }
     if (changePasswordLink) {
@@ -1546,6 +1612,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const exportCSVBtn = document.getElementById('exportCSVBtn');
     const backupBtn = document.getElementById('backupBtn');
     const restoreBtn = document.getElementById('restoreBtn');
+    const saveProfileBtn = document.getElementById('saveProfileBtn');
 
     if (reportTasksBtn) reportTasksBtn.addEventListener('click', () => generateReport('tasks'));
     if (reportProjectsBtn) reportProjectsBtn.addEventListener('click', () => generateReport('projects'));
@@ -1553,6 +1620,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (exportCSVBtn) exportCSVBtn.addEventListener('click', exportCSV);
     if (backupBtn) backupBtn.addEventListener('click', backupData);
     if (restoreBtn) restoreBtn.addEventListener('click', restoreData);
+    if (saveProfileBtn) saveProfileBtn.addEventListener('click', saveProfile);
 
     // Botón y modal de registro de usuario (admin)
     const registerBtn = document.getElementById('registerUserBtn');
