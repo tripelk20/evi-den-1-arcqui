@@ -17,12 +17,16 @@ app.use(express.json());
 // ────────────────────────────────────────────────
 // Conexión a MongoDB Atlas
 // ────────────────────────────────────────────────
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('MongoDB conectado → base: conection'))
-  .catch(err => {
-    console.error('Error al conectar a MongoDB:', err.message);
-    process.exit(1);
-  });
+mongoose.connect(process.env.MONGO_URI, {
+  dbName: 'conection'
+})
+.then(() => {
+  console.log('MongoDB conectado correctamente');
+})
+.catch((error) => {
+  console.error('Error MongoDB:', error.message);
+  process.exit(1);
+});
 
 // ────────────────────────────────────────────────
 // Modelos (uno por cada colección)
