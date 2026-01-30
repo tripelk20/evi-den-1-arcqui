@@ -402,7 +402,7 @@ function updateUIAfterLogin(username, role = null) {
     const registerItem = document.getElementById('registerUserItem');
 
     if (profileDropdown) {
-        profileDropdown.style.display = 'block';
+        profileDropdown.classList.remove('is-hidden');
         // Inicializar dropdown: el menú se abre al picar la foto/icono del perfil (profileMenu)
         const profileMenu = document.getElementById('profileMenu');
         if (profileMenu && typeof bootstrap !== 'undefined') {
@@ -415,7 +415,7 @@ function updateUIAfterLogin(username, role = null) {
 
     isAdmin = role ? role === 'admin' : (username.toLowerCase() === 'admin');
     if (registerItem) {
-        registerItem.style.display = isAdmin ? 'block' : 'none';
+        registerItem.classList.toggle('is-hidden', !isAdmin);
     }
 }
 

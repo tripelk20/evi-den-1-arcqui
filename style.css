@@ -1,18 +1,18 @@
 /* Estilos personalizados - Blanco, Guinda y Dorado (equilibrio) */
 
 :root {
-    --white-bg: #fafafa;
+    --white-bg: #f8f5ef; /* blanco hueso */
     --white-pure: #ffffff;
-    --cream: #fdfbf7;
-    --guinda: #722f37;
-    --guinda-light: #8b3a44;
-    --guinda-dark: #5a252c;
-    --gold-primary: #c9a227;
-    --gold-bright: #d4af37;
-    --gold-dark: #a68b1e;
-    --gold-soft: #e8d5a3;
-    --border-guinda: rgba(114, 47, 55, 0.35);
-    --border-gold: rgba(201, 162, 39, 0.4);
+    --cream: #f4efe6; /* hueso suave */
+    --guinda: #5b3b7a; /* morado */
+    --guinda-light: #6f4b94;
+    --guinda-dark: #4a2f63;
+    --gold-primary: #2d7a6b; /* verde-azulado */
+    --gold-bright: #4db6ac;
+    --gold-dark: #1b5e52;
+    --gold-soft: #d9f2ee;
+    --border-guinda: rgba(91, 59, 122, 0.35);
+    --border-gold: rgba(45, 122, 107, 0.4);
     --text-dark: #2d2d2d;
     --text-muted: #5a5a5a;
 }
@@ -22,6 +22,43 @@ body.dark-theme {
     color: var(--text-dark);
     min-height: 100vh;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.is-hidden {
+    display: none !important;
+}
+
+/* Login page */
+body.login-page {
+    background: linear-gradient(180deg, var(--white-bg) 0%, var(--cream) 50%, var(--white-bg) 100%);
+    min-height: 100vh;
+}
+
+.login-card {
+    background: var(--white-pure);
+    border: 2px solid var(--gold-bright);
+    box-shadow: 0 0 30px rgba(77, 182, 172, 0.3);
+}
+
+.login-card .card-body {
+    background: linear-gradient(135deg, rgba(248, 245, 239, 0.9) 0%, rgba(244, 239, 230, 0.9) 100%);
+}
+
+.login-card-size {
+    width: 100%;
+    max-width: 400px;
+}
+
+.login-icon {
+    font-size: 3rem;
+}
+
+.login-subtitle {
+    color: var(--text-muted) !important;
+}
+
+body.login-page .text-primary {
+    color: var(--guinda) !important;
 }
 
 /* Navbar - Guinda con dorado */
@@ -143,7 +180,7 @@ body.dark-theme {
 }
 
 .btn-danger {
-    background: linear-gradient(135deg, var(--guinda-dark) 0%, #8b3a44 100%);
+    background: linear-gradient(135deg, #4a2f63 0%, #6f4b94 100%);
     border: 1px solid var(--gold-primary);
     color: var(--white-pure);
 }
@@ -151,7 +188,7 @@ body.dark-theme {
 .btn-danger:hover {
     border-color: var(--gold-bright);
     color: var(--gold-soft);
-    box-shadow: 0 4px 12px rgba(114, 47, 55, 0.35);
+    box-shadow: 0 4px 12px rgba(74, 47, 99, 0.35);
 }
 
 .btn-secondary {
@@ -178,15 +215,15 @@ body.dark-theme {
 }
 
 .btn-warning {
-    background: linear-gradient(135deg, var(--gold-dark) 0%, var(--gold-primary) 100%);
-    border: 1px solid var(--guinda);
+    background: linear-gradient(135deg, #f0a04b 0%, #f4b266 100%); /* naranja */
+    border: 1px solid #e38b2c;
     color: var(--white-pure);
 }
 
 .btn-warning:hover {
-    background: linear-gradient(135deg, var(--gold-primary) 0%, var(--gold-bright) 100%);
-    border-color: var(--guinda);
-    color: var(--guinda-dark);
+    background: linear-gradient(135deg, #f4b266 0%, #f6c07a 100%);
+    border-color: #e38b2c;
+    color: #4a2f63;
 }
 
 /* Nav Tabs - Blanco con acentos */
@@ -392,27 +429,27 @@ textarea[readonly] {
 }
 
 .priority-baja {
-    background-color: var(--cream);
-    color: #2d6a3e;
-    border: 1px solid var(--gold-primary);
+    background-color: #e8f5e9;
+    color: #1b5e20;
+    border: 1px solid #2e7d32;
 }
 
 .priority-media {
-    background-color: var(--gold-soft);
-    color: var(--guinda-dark);
-    border: 1px solid var(--gold-primary);
+    background-color: #fff3e0;
+    color: #e65100;
+    border: 1px solid #fb8c00;
 }
 
 .priority-alta {
-    background-color: rgba(114, 47, 55, 0.15);
-    color: var(--guinda);
-    border: 1px solid var(--guinda);
+    background-color: #ffebee;
+    color: #c62828;
+    border: 1px solid #d32f2f;
 }
 
 .priority-crítica {
-    background-color: var(--guinda);
-    color: var(--gold-bright);
-    border: 1px solid var(--gold-primary);
+    background-color: #b71c1c;
+    color: #fff5f5;
+    border: 1px solid #7f0000;
     font-weight: 700;
 }
 
@@ -443,7 +480,7 @@ textarea[readonly] {
 }
 
 .status-bloqueada {
-    background-color: rgba(114, 47, 55, 0.15);
+    background-color: rgba(91, 59, 122, 0.15);
     color: var(--guinda);
     border: 1px solid var(--guinda);
 }
