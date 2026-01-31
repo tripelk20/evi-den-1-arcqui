@@ -22,9 +22,10 @@ if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
 app.use('/uploads', express.static(uploadDir));
+app.use(express.static(path.join(__dirname, '..')));
 
 app.get('/', (req, res) => {
-  res.send('Servidor activo ✅');
+  res.sendFile(path.join(__dirname, '..', 'index.html'));
 });
 
 const storage = multer.diskStorage({
