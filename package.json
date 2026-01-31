@@ -1,0 +1,8 @@
+{
+  "name": "evi-den-1-arcqui-root",
+  "private": true,
+  "scripts": {
+    "build": "cd server && npm install",
+    "start": "node server/app.js"
+  }
+}
