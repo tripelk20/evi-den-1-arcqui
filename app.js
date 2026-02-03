@@ -455,11 +455,12 @@ function setSession({ token, username, role, permisos }) {
 }
 
 function getSession() {
-    const token = sessionStorage.getItem('token') || '';
-    const username = sessionStorage.getItem('username') || '';
-    const role = sessionStorage.getItem('role') || 'user';
-    const permisos = sessionStorage.getItem('permisos') === 'true';
-    return { token, username, role, permisos };
+    return {
+        token: sessionStorage.getItem('token') || '',
+        username: sessionStorage.getItem('username') || '',
+        role: sessionStorage.getItem('role') || 'user',
+        permisos: sessionStorage.getItem('permisos') === 'true'
+    };
 }
 
 function clearSession() {
