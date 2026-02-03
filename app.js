@@ -5,7 +5,9 @@ const CONFIG = {
     DEBOUNCE_DELAY: 300,
     MAX_NOTIFICATION_DISPLAY: 5,
     NOTIFICATION_DURATION: 5000,
-    API_BASE_URL: 'http://localhost:3000/api'
+    API_BASE_URL: (window.location.origin && window.location.origin !== 'null')
+        ? `${window.location.origin}/api`
+        : 'http://localhost:3000/api'
 };
 let isAdmin = false;
 // ============================================

@@ -71,7 +71,9 @@
             success(message) { this.show(message, 'success'); }
         };
 
-        const API_BASE_URL = 'http://localhost:3000/api';
+        const API_BASE_URL = (window.location.origin && window.location.origin !== 'null')
+            ? `${window.location.origin}/api`
+            : 'http://localhost:3000/api';
 
         async function login() {
             const username = document.getElementById('username').value.trim();
