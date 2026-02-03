@@ -447,13 +447,50 @@ function updateUIAfterLogin(username, role = null, displayName = '', permisos = 
     }
 }
 
+function setSession({ token, username, role, permisos }) {
+    sessionStorage.setItem('token', token || '');
+    sessionStorage.setItem('username', username || '');
+    sessionStorage.setItem('role', role || 'user');
+    sessionStorage.setItem('permisos', String(!!permisos));
+}
+
+function getSession() {
+    const token = sessionStorage.getItem('token') || '';
+    const username = sessionStorage.getItem('username') || '';
+    const role = sessionStorage.getItem('role') || 'user';
+    const permisos = sessionStorage.getItem('permisos') === 'true';
+    return { token, username, role, permisos };
+}
+
+function clearSession() {
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('username');
+    sessionStorage.removeItem('role');
+    sessionStorage.removeItem('permisos');
+}
+
 async function login() {
     const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : '';
     const params = new URLSearchParams(hash);
-    const token = params.get('token');
-    const username = params.get('user');
-    const role = params.get('role') || 'user';
-    const permisos = params.get('permisos') === 'true';
+    const tokenFromHash = params.get('token');
+    const usernameFromHash = params.get('user');
+    const roleFromHash = params.get('role') || 'user';
+    const permisosFromHash = params.get('permisos') === 'true';
+
+    let token = tokenFromHash;
+    let username = usernameFromHash;
+    let role = roleFromHash;
+    let permisos = permisosFromHash;
+
+    if (tokenFromHash && usernameFromHash) {
+        setSession({ token: tokenFromHash, username: usernameFromHash, role: roleFromHash, permisos: permisosFromHash });
+    } else {
+        const session = getSession();
+        token = session.token;
+        username = session.username;
+        role = session.role;
+        permisos = session.permisos;
+    }
 
     if (!token || !username) {
         window.location.href = 'login.html';
@@ -476,6 +513,7 @@ function logout() {
     AppState.currentUser = null;
     AppState.selectedTaskId = null;
     AppState.selectedProjectId = null;
+    clearSession();
     Api.setToken(null);
     clearTaskForm();
     NotificationSystem.success('Sesión cerrada');
