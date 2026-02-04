@@ -1373,15 +1373,23 @@ async function loadComments() {
 // ============================================
 async function loadHistory() {
     try {
-        const taskId = document.getElementById('historyTaskId').value.trim();
+        const taskIdInput = document.getElementById('historyTaskId').value.trim();
         const historyArea = document.getElementById('historyArea');
         if (!historyArea) return;
 
-        if (!taskId) {
+        if (!taskIdInput) {
             historyArea.value = 'Ingresa un ID de tarea';
             return;
         }
 
+        const tasks = await Api.getTasks();
+        let taskId = taskIdInput;
+        if (/^\d+$/.test(taskIdInput)) {
+            const match = tasks.find(t => String(t.numero) === taskIdInput);
+            if (match) {
+                taskId = match._id;
+            }
+        }
         const history = await Api.getHistory(taskId);
 
         let text = `=== HISTORIAL TAREA #${taskId} ===\n\n`;
