@@ -296,6 +296,13 @@ const Api = {
         return await this.request('PUT', '/profile', payload);
     },
 
+    async updateUserPassword(username, oldPassword, newPassword) {
+        return await this.request('PUT', `/users/${encodeURIComponent(username)}/password`, {
+            oldPassword,
+            newPassword
+        });
+    },
+
     async getProjects() {
         const list = await this.request('GET', '/projects');
         return Array.isArray(list) ? list : [];
@@ -430,6 +437,7 @@ function updateUIAfterLogin(username, role = null, displayName = '', permisos = 
     const profileDropdown = document.getElementById('profileDropdown');
     const currentUserSpan = document.getElementById('currentUser');
     const registerItem = document.getElementById('registerUserItem');
+    const changePasswordLink = document.getElementById('changePasswordLink');
 
     if (profileDropdown) {
         profileDropdown.classList.remove('is-hidden');
@@ -446,6 +454,9 @@ function updateUIAfterLogin(username, role = null, displayName = '', permisos = 
     isAdmin = permisos === true || role === 'admin';
     if (registerItem) {
         registerItem.classList.toggle('is-hidden', !isAdmin);
+    }
+    if (changePasswordLink) {
+        changePasswordLink.classList.toggle('is-hidden', !isAdmin);
     }
 }
 
@@ -741,6 +752,69 @@ async function saveProfile() {
     }
 }
 
+async function openChangePasswordModal() {
+    if (!isAdmin) {
+        NotificationSystem.warning('Solo el admin puede cambiar contraseñas');
+        return;
+    }
+    try {
+        const modalEl = document.getElementById('changePasswordModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+        const users = await Api.getUsers();
+        const select = document.getElementById('passwordUserSelect');
+        if (select) {
+            select.innerHTML = '';
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.username;
+                option.textContent = user.username;
+                select.appendChild(option);
+            });
+        }
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error('Error al cargar usuarios');
+    }
+}
+
+async function savePasswordChange() {
+    const userSelect = document.getElementById('passwordUserSelect');
+    const oldPasswordInput = document.getElementById('oldPasswordInput');
+    const newPasswordInput = document.getElementById('newPasswordInput');
+    const confirmInput = document.getElementById('newPasswordConfirmInput');
+
+    const username = userSelect ? userSelect.value : '';
+    const oldPassword = oldPasswordInput ? oldPasswordInput.value : '';
+    const newPassword = newPasswordInput ? newPasswordInput.value : '';
+    const confirmPassword = confirmInput ? confirmInput.value : '';
+
+    if (!username || !oldPassword || !newPassword) {
+        NotificationSystem.warning('Completa todos los campos');
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        NotificationSystem.error('Las contraseñas nuevas no coinciden');
+        return;
+    }
+    try {
+        await Api.updateUserPassword(username, oldPassword, newPassword);
+        NotificationSystem.success('Contraseña actualizada');
+        if (oldPasswordInput) oldPasswordInput.value = '';
+        if (newPasswordInput) newPasswordInput.value = '';
+        if (confirmInput) confirmInput.value = '';
+        const modalEl = document.getElementById('changePasswordModal');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+            const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.hide();
+        }
+    } catch (err) {
+        console.error(err);
+        NotificationSystem.error(err.data && err.data.error ? err.data.error : 'Error al cambiar contraseña');
+    }
+}
 function cancelProfileChanges() {
     const nameInput = document.getElementById('profileName');
     const photoInput = document.getElementById('profilePhotoFile');
@@ -1666,7 +1740,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (changePasswordLink) {
         changePasswordLink.addEventListener('click', (e) => {
             e.preventDefault();
-            NotificationSystem.info('Función "Cambiar Contraseña" aún no implementada');
+            openChangePasswordModal();
         });
     }
 
@@ -1744,6 +1818,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const restoreBtn = document.getElementById('restoreBtn');
     const acceptProfileBtn = document.getElementById('acceptProfileBtn');
     const cancelProfileBtn = document.getElementById('cancelProfileBtn');
+    const savePasswordBtn = document.getElementById('savePasswordBtn');
     const profilePhotoFile = document.getElementById('profilePhotoFile');
 
     if (reportTasksBtn) reportTasksBtn.addEventListener('click', () => generateReport('tasks'));
@@ -1754,6 +1829,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (restoreBtn) restoreBtn.addEventListener('click', restoreData);
     if (acceptProfileBtn) acceptProfileBtn.addEventListener('click', saveProfile);
     if (cancelProfileBtn) cancelProfileBtn.addEventListener('click', cancelProfileChanges);
+    if (savePasswordBtn) savePasswordBtn.addEventListener('click', savePasswordChange);
     if (profilePhotoFile) {
         profilePhotoFile.addEventListener('change', (e) => {
             const file = e.target.files && e.target.files[0];

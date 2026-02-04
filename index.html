@@ -184,7 +184,7 @@
                     <div class="col-lg-8 mb-4">
                         <div class="card shadow-sm">
                             <div class="card-header bg-light">
-                                <h5 class="mb-0"><i class="bi bi-list-ul"></i> Lista de Tareas</h5>
+                                <h5 class="mb-0 task-list-title"><i class="bi bi-list-ul"></i> Lista de Tareas</h5>
                             </div>
                             <div class="card-body p-0">
                                 <div class="table-responsive">
@@ -488,7 +488,7 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=2"></script>
 
     <!-- Modal de Registro de Usuario (solo admin) -->
 <div class="modal fade" id="registerUserModal" tabindex="-1" aria-labelledby="registerUserModalLabel" aria-hidden="true">
@@ -546,6 +546,40 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" id="cancelProfileBtn" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-success" id="acceptProfileBtn">Aceptar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Cambio de Contraseña (admin) -->
+    <div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="changePasswordModalLabel">Cambiar Contraseña</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="passwordUserSelect" class="form-label">Usuario</label>
+                        <select class="form-select" id="passwordUserSelect"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="oldPasswordInput" class="form-label">Contraseña actual</label>
+                        <input type="password" class="form-control" id="oldPasswordInput">
+                    </div>
+                    <div class="mb-3">
+                        <label for="newPasswordInput" class="form-label">Nueva contraseña</label>
+                        <input type="password" class="form-control" id="newPasswordInput">
+                    </div>
+                    <div class="mb-3">
+                        <label for="newPasswordConfirmInput" class="form-label">Confirmar nueva contraseña</label>
+                        <input type="password" class="form-control" id="newPasswordConfirmInput">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" id="savePasswordBtn">Guardar</button>
                 </div>
             </div>
         </div>

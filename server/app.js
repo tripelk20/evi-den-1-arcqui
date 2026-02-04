@@ -304,6 +304,26 @@ app.post('/api/users', auth, requireAdmin, async (req, res) => {
   }
 });
 
+// Cambiar contraseña (solo admin)
+app.put('/api/users/:username/password', auth, requireAdmin, async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { oldPassword, newPassword } = req.body || {};
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ error: 'Datos incompletos' });
+    }
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const ok = await bcrypt.compare(oldPassword, user.password);
+    if (!ok) return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ message: 'Contraseña actualizada' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Proyectos
 app.get('/api/projects', auth, async (req, res) => {
   const projects = await Project.find({ createdBy: req.user.username }).sort({ createdAt: -1 });
